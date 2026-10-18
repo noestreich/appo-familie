@@ -159,13 +159,14 @@ Einmal bauen (`-destination "id=$UDID"`) und dieselbe `.app` auf beide Simulator
 
 ```bash
 brew install artemnovichkov/tap/hinge
-hinge -d "$DUO" closed   # Außendisplay
+hinge -d "$DUO" close    # Außendisplay (nicht „closed“ – das zeigt nur die Hilfe, ohne dass der Schritt scheitert)
 hinge -d "$DUO" open     # inneres Display, flach
+hinge -d "$DUO" get      # aktueller Winkel, zum Prüfen im Log
 ```
 
 Danach fünf Sekunden warten und die App neu starten (`terminate` + `launch`), damit sie im neuen Fenster aufbaut.
 
-*4. Das richtige Display fotografieren.* `simctl io <UDID> screenshot` ohne `--display` nimmt nach dem Klappen oft das gerade **abgeschaltete** Display – das Bild ist dann schwarz (Schreibo zweimal passiert, im App Store unbrauchbar). Immer gezielt wählen, erkannt an der Breite:
+*4. Das richtige Display fotografieren.* `simctl io <UDID> screenshot` ohne `--display` nimmt nach dem Klappen oft das gerade **abgeschaltete** Display – das Bild ist dann schwarz (Schreibo zweimal passiert, im App Store unbrauchbar). Immer gezielt wählen, erkannt an der Breite. Das passende Display merken und beim nächsten Bild zuerst probieren: Ein Foto vom abgeschalteten Display kann Minuten hängen (in Schreibo über drei Minuten je Szene). Die Workflows in appo-familie machen das schon; die Kurzform:
 
 ```bash
 display_shot() {   # $1 Zieldatei, $2 erlaubte Breiten

@@ -179,14 +179,25 @@ jobs:
           xcrun simctl install "$DUO" "$APP"
 
           # Display an der Breite erkennen: außen 1398, innen 2853 (quer) bzw. 2007.
+          # Das zuletzt passende Display zuerst probieren: Ein Foto vom gerade abgeschalteten Display kann
+          # Minuten hängen, bevor es scheitert (Schreibo: über drei Minuten je Szene ohne diesen Merker).
+          LAST_DISPLAY=""
           display_shot() {
-            for id in $(xcrun simctl io "$DUO" enumerate | awk '/UUID:/{u=$2} /Class: Display/{print u}'); do
+            for id in $LAST_DISPLAY $(xcrun simctl io "$DUO" enumerate | awk '/UUID:/{u=$2} /Class: Display/{print u}'); do
               xcrun simctl io "$DUO" screenshot --display="$id" pick.png >/dev/null 2>&1 || continue
               w=$(sips -g pixelWidth pick.png | awk '/pixelWidth/{print $2}')
-              case " $2 " in *" $w "*) mv pick.png "$1"; return 0;; esac
+              case " $2 " in *" $w "*) mv pick.png "$1"; LAST_DISPLAY="$id"; return 0;; esac
             done
             echo "Kein Display mit Breite $2 für $1"
             return 1
+          }
+          # Klappen: „close“ bzw. „open“ (hinge 0.1; „closed“ zeigt nur die Hilfe). Scheitert es, bricht der Schritt ab,
+          # statt Bilder in der falschen Haltung aufzunehmen.
+          fold() {
+            if ! hinge -d "$DUO" "$1"; then echo "::error::hinge $1 hat nicht geklappt"; return 1; fi
+            LAST_DISPLAY=""
+            sleep 5
+            echo "Klappwinkel nach $1: $(hinge -d "$DUO" get 2>&1)"
           }
           duo_scenes() {   # $1 Szenenliste, $2 Zielordner, $3 erlaubte Breiten
             mkdir -p "$2"
@@ -205,12 +216,12 @@ jobs:
           xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$WARMUP"
           sleep 60
           if [ -n "$OUTER" ]; then
-            hinge -d "$DUO" closed && sleep 5
+            fold close
             duo_scenes "$OUTER" duoouter "1398"
           fi
           if [ -n "$INNER" ]; then
             xcrun simctl ui "$DUO" appearance light
-            hinge -d "$DUO" open && sleep 5
+            fold open
             duo_scenes "$INNER" duoshots "2853 2007"
           fi
           xcrun simctl shutdown "$DUO" || true
