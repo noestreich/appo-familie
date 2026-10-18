@@ -237,7 +237,8 @@ jobs:
         run: |
           mkdir -p watchshots
           # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten)
-          xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -3 || true
+          xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -15 || true
+          echo "Watch-Laufzeiten:"; xcrun simctl list runtimes | grep -i watch || echo "keine"
           TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
           import json, sys
           types = [t for t in json.load(sys.stdin)['devicetypes'] if 'Watch' in t['name']]
@@ -251,7 +252,11 @@ jobs:
               if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then WATCH="$out"; echo "$t auf $rt"; break 2; fi
             done
           done
-          if [ -z "$WATCH" ]; then echo "Keine Watch anlegbar – zuletzt: $last"; exit 1; fi
+          if [ -z "$WATCH" ]; then
+            echo "Keine Watch anlegbar – zuletzt: ${last:-keine Laufzeit oder kein Gerätetyp gefunden}"
+            echo "Gerätetypen: $TYPES"
+            exit 1
+          fi
           xcrun simctl boot "$WATCH"
           xcrun simctl bootstatus "$WATCH" -b
           xcrun simctl install "$WATCH" "build/Build/Products/Debug-watchsimulator/$WATCH_APP.app"
