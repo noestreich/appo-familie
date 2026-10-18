@@ -27,4 +27,5 @@ Gemeinsame Regeln (`DESIGN.md`), wiederverwendbare Workflows (`.github/workflows
 ## Nicht vergessen
 
 - Neue Bausteine in `README.md` (Tabelle und Einbinden) und in `DESIGN.md` („Bausteine“) eintragen.
+- Webseiten immer gemeinsam ändern: neuer Abschnitt oder neue Gestaltung in allen Apps zugleich (`DESIGN.md`, „Webseite“).
 - Keine Markennamen in App-Store-Schlüsselwörtern, keine fremden Logos.

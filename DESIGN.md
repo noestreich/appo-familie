@@ -232,6 +232,15 @@ Reihenfolge im Workflow: hochfahren, App einmal starten und 60 Sekunden warten (
 4. Zwei Spalten innen, je App wie oben.
 5. Duo-Screenshots in den App Store, Webseite ergänzen.
 
+## Webseite
+
+Jede App hat eine Webseite aus einer einzigen HTML-Datei (`docs/website/index.html` im Repo der App), Bilder eingebettet (JPEG, 660 Pixel breit, base64), ohne fremde Schriften, Skripte oder Zähler.
+
+- **Alle Webseiten sehen gleich aus.** Gleicher Aufbau, gleiche Gestaltung, gleiche Bausteine; die App bringt nur ihre Standard-Farbwelt, ihr Icon, ihre Texte und ihre Bilder mit. Wer eine Seite ansieht, erkennt die Familie.
+- **Feste Reihenfolge der Abschnitte:** Kopf (Icon, Name, ein Satz, Knopf zum App Store) → Funktionen → iPhone Duo → Hilfe → Datenschutz → Impressum. Was eine App nicht hat, fällt weg; neue Abschnitte bekommen in allen Apps denselben Platz.
+- **Gemeinsam ändern.** Ein neuer Abschnitt oder eine geänderte Gestaltung kommt in alle Webseiten zugleich, in derselben Sitzung. Keine Seite bekommt etwas, das die anderen nicht auch bekommen, außer dem Inhalt.
+- **Ziel:** Vorlage und Erzeugungs-Skript liegen hier in appo-familie (`website/`), der Inhalt je App in `docs/website/site.json` plus Bildern. Das Skript schreibt wie bisher `docs/website/index.html` ins Repo der App, damit Adresse und Veröffentlichung bleiben, wie sie sind. Bis dahin ist Kaufos Seite das Vorbild.
+
 ## App Store: Stolpersteine beim ersten Upload
 
 Alles in `project.yml`, damit es beim Neuerzeugen mit XcodeGen erhalten bleibt:
@@ -254,6 +263,7 @@ Was in appo-familie liegt, wird eingebunden, nicht kopiert. Der Rest wird vorers
 | „Weitere Apps von uns“ (ganz unten in den Einstellungen) | appo-familie, Produkt `MoreApps` | erledigt |
 | CI, Screenshots, App-Store-Bilder | appo-familie, `.github/workflows/` | erledigt |
 | App-Icon, App-Store-Rahmen | appo-familie, `scripts/make_icon.py`, `scripts/appstore_frames.py` | erledigt |
+| Webseite (Vorlage, Gestaltung, Abschnitte) | je App eine eigene Datei `docs/website/index.html` | appo-familie `website/`: Vorlage und Skript, Inhalt je App (siehe „Webseite“) |
 | Farbwelten | Kaufo `App/Theme/AppTheme.swift` (Himbeere & Koralle in Scanno) | Paket, Produkt `FamilieUI` |
 | Blob, Blob-Button, Logo | Kaufo `App/Theme/BlobButton.swift` | `FamilieUI` |
 | Schriften und `.appFont` | Kaufo `Shared/Typeface.swift` | `FamilieUI` |
