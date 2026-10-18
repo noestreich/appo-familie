@@ -1,0 +1,30 @@
+name: Swift-Tests (Familie)
+
+# Wiederverwendbar: plattformunabhängiges Paket einer App unter Linux testen.
+#   jobs:
+#     core-tests:
+#       uses: noestreich/appo-familie/.github/workflows/swift-tests.yml@v1
+#       with:
+#         package-path: Packages/SchreiboCore
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: Ordner des Swift-Pakets
+        type: string
+        required: true
+      name:
+        description: Anzeigename des Jobs
+        type: string
+        default: Swift-Tests (Linux)
+
+jobs:
+  tests:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        working-directory: ${{ inputs.package-path }}
+        run: swift test

@@ -1,0 +1,294 @@
+name: App-Store-Screenshots (Familie)
+
+# Wiederverwendbar: Bilder in voller Auflösung für App Store Connect.
+#   iPhone 6,9" (Pro Max, 1320 × 2868)          → docs/appstore/raw/
+#   iPhone Duo innen (aufgeklappt, 2853 × 2007)  → docs/appstore/raw-duo/
+#   iPhone Duo außen (zugeklappt, 1398 × 2034)   → docs/appstore/raw-duo-aussen/
+#   Apple Watch (falls die App eine hat)         → docs/appstore/watch/
+# Ersetzt wird nur, was dieser Lauf neu aufgenommen hat – ein fehlendes Watch-Bild löscht das alte nicht.
+# Rahmen und Überschriften danach lokal: python3 scripts/appstore_frames.py (siehe README).
+# Erprobt in Schreibo, Oktober 2026 – die Gründe für jeden Schritt stehen in DESIGN.md („Rezept: Duo-Build …“).
+#
+# Szenen wie im Screenshots-Workflow: „<szene> <sekunden> <dateiname> [weitere Startargumente]“,
+# „appearance dark|light“ schaltet um. Watch-Szenen: „<sekunden> <dateiname> [Startargumente nach -demo]“.
+#
+#   jobs:
+#     appstore:
+#       uses: noestreich/appo-familie/.github/workflows/appstore.yml@v1
+#       permissions:
+#         contents: write
+#       with:
+#         project: Schreibo.xcodeproj
+#         scheme: Schreibo
+#         app-name: Schreibo
+#         bundle-id: de.ncls.schreibo
+#         iphone-scenes: |
+#           today 10 01-heute
+#         duo-inner-scenes: |
+#           today 10 01-doppelseite
+#         duo-outer-scenes: |
+#           today 10 01-aussen
+#         watch-app: SchreiboWatch
+#         watch-bundle-id: de.ncls.schreibo.watchkitapp
+#         watch-scenes: |
+#           10 watch-1-heute
+#       secrets: inherit
+on:
+  workflow_call:
+    inputs:
+      project:
+        type: string
+        required: true
+      scheme:
+        type: string
+        required: true
+      app-name:
+        description: Name der .app im Build-Ordner (ohne .app)
+        type: string
+        required: true
+      bundle-id:
+        type: string
+        required: true
+      iphone-scenes:
+        type: string
+        required: true
+      duo-inner-scenes:
+        description: Szenen fürs innere Display (aufgeklappt quer, 2853 × 2007); leer = keine
+        type: string
+        default: ""
+      duo-outer-scenes:
+        description: Szenen fürs Außendisplay (zugeklappt, 1398 × 2034); leer = keine
+        type: string
+        default: ""
+      watch-app:
+        description: Name der Watch-.app im Build-Ordner (ohne .app); leer = keine Watch
+        type: string
+        default: ""
+      watch-bundle-id:
+        type: string
+        default: ""
+      watch-scenes:
+        type: string
+        default: ""
+      warmup-scene:
+        description: Szene für den ersten Start, nach dem 60 Sekunden gewartet wird (Systemmitteilungen)
+        type: string
+        default: today
+      iphone-types:
+        description: Gerätetypen in dieser Reihenfolge probieren (Fach 6,9")
+        type: string
+        default: iPhone-18-Pro-Max iPhone-17-Pro-Max
+      location:
+        description: Simulierter Standort (Breite,Länge); leer = keiner
+        type: string
+        default: "52.4990,13.4030"
+      output-root:
+        type: string
+        default: docs/appstore
+    secrets:
+      FAMILIE_TOKEN:
+        required: false
+
+jobs:
+  appstore:
+    name: App-Store-Bilder
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      BUNDLE: ${{ inputs.bundle-id }}
+      LOCATION: ${{ inputs.location }}
+      WARMUP: ${{ inputs.warmup-scene }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zugriff auf appo-familie (nur wenn privat)
+        env:
+          TOKEN: ${{ secrets.FAMILIE_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            git config --global url."https://x-access-token:${TOKEN}@github.com/noestreich/appo-familie".insteadOf "https://github.com/noestreich/appo-familie"
+          fi
+      - name: XcodeGen
+        run: brew install xcodegen && xcodegen generate
+
+      - name: iPhone Pro Max anlegen und starten
+        env:
+          TYPES: ${{ inputs.iphone-types }}
+        run: |
+          # Kein Simulator im Image; nur eine echte UUID zählt (simctl schreibt Fehler auf stdout).
+          # Normale iPhones laufen auf der vorinstallierten 27.0-Laufzeit, gebaut wird mit dem 27.1-SDK.
+          UDID=""
+          for rt in $(xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='iOS' and r['isAvailable']))"); do
+            for t in $TYPES; do
+              out=$(xcrun simctl create "Familie Pro Max" "com.apple.CoreSimulator.SimDeviceType.$t" "$rt" 2>&1) || continue
+              if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then UDID="$out"; echo "$t auf $rt"; break 2; fi
+            done
+          done
+          test -n "$UDID"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl spawn "$UDID" defaults write com.apple.Preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl spawn "$UDID" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --operatorName ""
+          if [ -n "$LOCATION" ]; then xcrun simctl location "$UDID" set "$LOCATION" || true; fi
+
+      - name: Bauen
+        run: |
+          set -o pipefail
+          xcodebuild build -project "${{ inputs.project }}" -scheme "${{ inputs.scheme }}" \
+            -destination "id=$UDID" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tail -5
+          echo "APP=build/Build/Products/Debug-iphonesimulator/${{ inputs.app-name }}.app" >> "$GITHUB_ENV"
+
+      - name: iPhone-Bilder
+        env:
+          SCENES: ${{ inputs.iphone-scenes }}
+        run: |
+          mkdir -p shots
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl launch "$UDID" "$BUNDLE" -demo -demoScene "$WARMUP"
+          sleep 60
+          while read -r scene secs name rest <&3; do
+            case "$scene" in ""|\#*) continue;; esac
+            if [ "$scene" = appearance ]; then xcrun simctl ui "$UDID" appearance "$secs"; continue; fi
+            xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            xcrun simctl launch "$UDID" "$BUNDLE" -demo -demoScene "$scene" $rest < /dev/null
+            sleep "$secs"
+            xcrun simctl io "$UDID" screenshot "shots/$name.png" < /dev/null
+          done 3<<< "$SCENES"
+          sips -g pixelWidth -g pixelHeight shots/*.png | head -3
+          xcrun simctl shutdown "$UDID" || true
+
+      - name: iPhone-Duo-Bilder
+        if: inputs.duo-outer-scenes != '' || inputs.duo-inner-scenes != ''
+        env:
+          OUTER: ${{ inputs.duo-outer-scenes }}
+          INNER: ${{ inputs.duo-inner-scenes }}
+        run: |
+          xcodebuild -downloadPlatform iOS 2>&1 | grep -v "%" | tail -3
+          brew install artemnovichkov/tap/hinge
+          DUO=$(xcrun simctl create "Familie Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo com.apple.CoreSimulator.SimRuntime.iOS-27-1)
+          xcrun simctl boot "$DUO"
+          xcrun simctl bootstatus "$DUO" -b || true
+          xcrun simctl spawn "$DUO" defaults write com.apple.Preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl spawn "$DUO" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl status_bar "$DUO" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --operatorName "" || true
+          if [ -n "$LOCATION" ]; then xcrun simctl location "$DUO" set "$LOCATION" || true; fi
+          xcrun simctl install "$DUO" "$APP"
+
+          # Display an der Breite erkennen: außen 1398, innen 2853 (quer) bzw. 2007.
+          display_shot() {
+            for id in $(xcrun simctl io "$DUO" enumerate | awk '/UUID:/{u=$2} /Class: Display/{print u}'); do
+              xcrun simctl io "$DUO" screenshot --display="$id" pick.png >/dev/null 2>&1 || continue
+              w=$(sips -g pixelWidth pick.png | awk '/pixelWidth/{print $2}')
+              case " $2 " in *" $w "*) mv pick.png "$1"; return 0;; esac
+            done
+            echo "Kein Display mit Breite $2 für $1"
+            return 1
+          }
+          duo_scenes() {   # $1 Szenenliste, $2 Zielordner, $3 erlaubte Breiten
+            mkdir -p "$2"
+            while read -r scene secs name rest <&3; do
+              case "$scene" in ""|\#*) continue;; esac
+              if [ "$scene" = appearance ]; then xcrun simctl ui "$DUO" appearance "$secs"; continue; fi
+              xcrun simctl terminate "$DUO" "$BUNDLE" 2>/dev/null || true
+              # shellcheck disable=SC2086
+              xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$scene" $rest < /dev/null
+              sleep "$secs"
+              display_shot "$2/$name.png" "$3" < /dev/null || echo "::warning::$name nicht aufgenommen"
+            done 3<<< "$1"
+          }
+
+          xcrun simctl ui "$DUO" appearance light
+          xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$WARMUP"
+          sleep 60
+          if [ -n "$OUTER" ]; then
+            hinge -d "$DUO" closed && sleep 5
+            duo_scenes "$OUTER" duoouter "1398"
+          fi
+          if [ -n "$INNER" ]; then
+            xcrun simctl ui "$DUO" appearance light
+            hinge -d "$DUO" open && sleep 5
+            duo_scenes "$INNER" duoshots "2853 2007"
+          fi
+          xcrun simctl shutdown "$DUO" || true
+
+      - name: Apple-Watch-Bilder
+        if: inputs.watch-app != ''
+        # Ein fehlendes Watch-Bild soll die iPhone- und Duo-Bilder nicht aufhalten.
+        continue-on-error: true
+        env:
+          WATCH_APP: ${{ inputs.watch-app }}
+          WATCH_BUNDLE: ${{ inputs.watch-bundle-id }}
+          SCENES: ${{ inputs.watch-scenes }}
+        run: |
+          mkdir -p watchshots
+          # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten)
+          xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -3 || true
+          TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          types = [t for t in json.load(sys.stdin)['devicetypes'] if 'Watch' in t['name']]
+          order = sorted(range(len(types)), key=lambda i: ('Ultra' not in types[i]['name'], -i))
+          print(' '.join(types[i]['identifier'] for i in order))")
+          WATCH=""
+          last=""
+          for rt in $(xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='watchOS' and r['isAvailable']))"); do
+            for t in $TYPES; do
+              out=$(xcrun simctl create "Familie Watch" "$t" "$rt" 2>&1) || { last="$t auf $rt: $out"; continue; }
+              if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then WATCH="$out"; echo "$t auf $rt"; break 2; fi
+            done
+          done
+          if [ -z "$WATCH" ]; then echo "Keine Watch anlegbar – zuletzt: $last"; exit 1; fi
+          xcrun simctl boot "$WATCH"
+          xcrun simctl bootstatus "$WATCH" -b
+          xcrun simctl install "$WATCH" "build/Build/Products/Debug-watchsimulator/$WATCH_APP.app"
+          xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo
+          sleep 45
+          while read -r secs name rest <&3; do
+            case "$secs" in ""|\#*) continue;; esac
+            xcrun simctl terminate "$WATCH" "$WATCH_BUNDLE" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo $rest < /dev/null
+            sleep "$secs"
+            xcrun simctl io "$WATCH" screenshot "watchshots/$name.png" < /dev/null
+          done 3<<< "$SCENES"
+
+      - name: Auf schwarze Bilder prüfen
+        if: always()
+        run: |
+          for f in shots/*.png duoshots/*.png duoouter/*.png; do
+            [ -f "$f" ] || continue
+            size=$(stat -f %z "$f")
+            if [ "$size" -lt 60000 ]; then echo "::warning::$f ist verdächtig klein ($size Bytes) – schwarzes Bild?"; fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appstore
+          path: |
+            shots
+            duoshots
+            duoouter
+            watchshots
+
+      - name: Ins Repo
+        env:
+          ROOT: ${{ inputs.output-root }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$GITHUB_REF_NAME"
+          git reset --hard "origin/$GITHUB_REF_NAME"
+          replace() {
+            if ls "$1"/*.png >/dev/null 2>&1; then rm -rf "$2"; mkdir -p "$2"; cp "$1"/*.png "$2"/; git add -A "$2"; fi
+          }
+          replace shots "$ROOT/raw"
+          replace duoshots "$ROOT/raw-duo"
+          replace duoouter "$ROOT/raw-duo-aussen"
+          replace watchshots "$ROOT/watch"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "App-Store-Screenshots aktualisiert [skip ci]"
+          git push origin HEAD:"$GITHUB_REF_NAME"

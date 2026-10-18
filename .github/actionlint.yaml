@@ -1,0 +1,4 @@
+# Runner-Image mit Xcode 27 (siehe DESIGN.md, Rezept Schritt 1)
+self-hosted-runner:
+  labels:
+    - xcode-27

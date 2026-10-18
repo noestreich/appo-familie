@@ -1,0 +1,42 @@
+name: Prüfen
+
+# Prüft appo-familie selbst: Syntax der Workflows, Python-Skripte, Swift-Paket.
+# Ob die wiederverwendbaren Workflows funktionieren, zeigt erst der Lauf in einer App.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Workflows und Skripte
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: |
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+      - name: Python-Skripte
+        run: |
+          pip install --quiet pillow
+          python3 -m py_compile scripts/*.py
+          python3 scripts/make_icon.py /tmp/icon.png 2A3FD6 FF6B5B FBF4E6 stift
+          python3 -c "from PIL import Image; assert Image.open('/tmp/icon.png').size == (1024, 1024)"
+
+  package:
+    name: Swift-Paket (macOS, iOS-Simulator)
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: macOS
+        run: swift build
+      - name: iOS-Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build -scheme MoreApps -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO | tail -3

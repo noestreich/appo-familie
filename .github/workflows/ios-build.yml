@@ -1,0 +1,70 @@
+name: iOS-Build (Familie)
+
+# Wiederverwendbar: App mit Xcode 27.1 (iOS-27.1-SDK, nötig fürs iPhone Duo) für den Simulator bauen,
+# gebaute Produkte und Warnungen im eigenen Code auflisten. Ziel der App bleibt ihre Sache (iOS 26).
+#   jobs:
+#     ios-build:
+#       uses: noestreich/appo-familie/.github/workflows/ios-build.yml@v1
+#       with:
+#         project: Schreibo.xcodeproj
+#         scheme: Schreibo
+#         product-prefix: Schreibo
+#       secrets: inherit
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Xcode-Projekt, wie es xcodegen erzeugt (z. B. Schreibo.xcodeproj)
+        type: string
+        required: true
+      scheme:
+        type: string
+        required: true
+      product-prefix:
+        description: Anfang der Produktnamen für die Liste (z. B. Schreibo → Schreibo.app, SchreiboWidget.appex)
+        type: string
+        required: true
+    secrets:
+      FAMILIE_TOKEN:
+        description: Nur nötig, solange appo-familie privat ist und die App das Swift-Paket per URL lädt (Lesezugriff auf appo-familie)
+        required: false
+
+jobs:
+  build:
+    name: iOS Build
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zugriff auf appo-familie (nur wenn privat)
+        env:
+          TOKEN: ${{ secrets.FAMILIE_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            git config --global url."https://x-access-token:${TOKEN}@github.com/noestreich/appo-familie".insteadOf "https://github.com/noestreich/appo-familie"
+          fi
+      - name: Xcode-Version
+        run: xcodebuild -version
+      - name: XcodeGen
+        run: brew install xcodegen && xcodegen generate
+      - name: Bauen (Simulator, ohne Signatur)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "${{ inputs.project }}" \
+            -scheme "${{ inputs.scheme }}" \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Gebaute Produkte und Warnungen
+        env:
+          PREFIX: ${{ inputs.product-prefix }}
+        run: |
+          echo "Produkte:"; grep -oE "${PREFIX}[A-Za-z]*\.(app|appex)" build.log | sort -u || true
+          echo "Warnungen im eigenen Code:"; grep -E "^/.*warning:" build.log | grep -v "/SourcePackages/" | sort -u | head -60 || true
+      - name: Fehler anzeigen
+        if: failure()
+        run: grep -E "error:" -A3 build.log | head -200 || true

@@ -1,0 +1,277 @@
+name: Screenshots (Familie)
+
+# Wiederverwendbar: Demo-Szenen im iPhone-Simulator und im iPhone Duo (zu- und aufgeklappt) aufnehmen,
+# auf 1100 Pixel lange Seite verkleinern und nach docs/screenshots/ committen.
+# Erprobt in Schreibo, Oktober 2026 – die Gründe für jeden Schritt stehen in DESIGN.md („Rezept: Duo-Build …“).
+#
+# Szenen: eine Zeile pro Bild, „<szene> <sekunden> <dateiname> [weitere Startargumente]“, gestartet mit
+# „-demo -demoScene <szene>“. „appearance dark“ bzw. „appearance light“ schaltet um. Leere Zeilen und
+# Zeilen mit # werden übersprungen.
+#
+#   jobs:
+#     screenshots:
+#       uses: noestreich/appo-familie/.github/workflows/screenshots.yml@v1
+#       permissions:
+#         contents: write
+#       with:
+#         project: Schreibo.xcodeproj
+#         scheme: Schreibo
+#         app-name: Schreibo
+#         bundle-id: de.ncls.schreibo
+#         iphone-scenes: |
+#           today 10 01-heute
+#           appearance dark
+#           today 10 19-heute-dunkel
+#         duo-outer-scenes: |
+#           today 10 34-duo-aussen
+#         duo-inner-scenes: |
+#           today 10 30-duo-doppelseite
+#       secrets: inherit
+on:
+  workflow_call:
+    inputs:
+      project:
+        type: string
+        required: true
+      scheme:
+        type: string
+        required: true
+      app-name:
+        description: Name der .app im Build-Ordner (ohne .app)
+        type: string
+        required: true
+      bundle-id:
+        type: string
+        required: true
+      iphone-scenes:
+        type: string
+        required: true
+      duo-outer-scenes:
+        description: Szenen fürs Außendisplay (zugeklappt, 1398 × 2034); leer = keine
+        type: string
+        default: ""
+      duo-inner-scenes:
+        description: Szenen fürs innere Display (aufgeklappt quer, 2853 × 2007); leer = keine
+        type: string
+        default: ""
+      warmup-scene:
+        description: Szene für den ersten Start, nach dem 60 Sekunden gewartet wird (Systemmitteilungen)
+        type: string
+        default: today
+      iphone-types:
+        description: Gerätetypen in dieser Reihenfolge probieren
+        type: string
+        default: iPhone-18-Pro iPhone-17-Pro
+      location:
+        description: Simulierter Standort (Breite,Länge); leer = keiner
+        type: string
+        default: "52.4990,13.4030"
+      output-dir:
+        type: string
+        default: docs/screenshots
+      max-size:
+        description: Lange Seite in Pixel für die Bilder im Repo
+        type: string
+        default: "1100"
+      commit:
+        description: Bilder ins Repo committen (nur bei push)
+        type: boolean
+        default: true
+    secrets:
+      FAMILIE_TOKEN:
+        required: false
+
+jobs:
+  screenshots:
+    name: Simulator-Screenshots
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      BUNDLE: ${{ inputs.bundle-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zugriff auf appo-familie (nur wenn privat)
+        env:
+          TOKEN: ${{ secrets.FAMILIE_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            git config --global url."https://x-access-token:${TOKEN}@github.com/noestreich/appo-familie".insteadOf "https://github.com/noestreich/appo-familie"
+          fi
+      - name: XcodeGen
+        run: brew install xcodegen && xcodegen generate
+
+      - name: iPhone anlegen und starten
+        env:
+          TYPES: ${{ inputs.iphone-types }}
+          LOCATION: ${{ inputs.location }}
+        run: |
+          # Das Image bringt keine Simulatoren mit. Laufzeiten (neueste zuerst) und Gerätetypen probieren und nur
+          # eine echte UUID akzeptieren – simctl create schreibt seine Fehlermeldung sonst in die Variable.
+          # Die geladene iOS-27.1-Laufzeit nimmt nur das Duo; normale iPhones landen auf der vorinstallierten 27.0.
+          UDID=""
+          for rt in $(xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='iOS' and r['isAvailable']))"); do
+            for t in $TYPES; do
+              out=$(xcrun simctl create "Familie iPhone" "com.apple.CoreSimulator.SimDeviceType.$t" "$rt" 2>&1) || continue
+              if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then UDID="$out"; echo "$t auf $rt"; break 2; fi
+            done
+          done
+          test -n "$UDID"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl spawn "$UDID" defaults write com.apple.Preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl spawn "$UDID" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          if [ -n "$LOCATION" ]; then xcrun simctl location "$UDID" set "$LOCATION" || true; fi
+
+      - name: Bauen
+        run: |
+          set -o pipefail
+          xcodebuild build -project "${{ inputs.project }}" -scheme "${{ inputs.scheme }}" \
+            -destination "id=$UDID" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tail -5
+          echo "APP=build/Build/Products/Debug-iphonesimulator/${{ inputs.app-name }}.app" >> "$GITHUB_ENV"
+
+      - name: iPhone-Screenshots
+        env:
+          SCENES: ${{ inputs.iphone-scenes }}
+          WARMUP: ${{ inputs.warmup-scene }}
+        run: |
+          mkdir -p shots
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl ui "$UDID" appearance light
+          # Erster Start: Systemmitteilungen abwarten
+          xcrun simctl launch "$UDID" "$BUNDLE" -demo -demoScene "$WARMUP"
+          sleep 60
+          # fd 3, damit simctl die Szenenliste nicht als Eingabe schluckt
+          while read -r scene secs name rest <&3; do
+            case "$scene" in ""|\#*) continue;; esac
+            if [ "$scene" = appearance ]; then xcrun simctl ui "$UDID" appearance "$secs"; continue; fi
+            xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            xcrun simctl launch "$UDID" "$BUNDLE" -demo -demoScene "$scene" $rest < /dev/null
+            sleep "$secs"
+            xcrun simctl io "$UDID" screenshot "shots/$name.png" < /dev/null
+          done 3<<< "$SCENES"
+          xcrun simctl shutdown "$UDID" || true
+
+      - name: iPhone Duo (zu- und aufgeklappt)
+        if: inputs.duo-outer-scenes != '' || inputs.duo-inner-scenes != ''
+        env:
+          OUTER: ${{ inputs.duo-outer-scenes }}
+          INNER: ${{ inputs.duo-inner-scenes }}
+          WARMUP: ${{ inputs.warmup-scene }}
+          LOCATION: ${{ inputs.location }}
+        run: |
+          # Laufzeit iOS 27.1 (7,85 GB, rund zwei Minuten) – nur sie kennt das Duo
+          xcodebuild -downloadPlatform iOS 2>&1 | grep -v "%" | tail -3
+          # Klappwinkel: simctl kann das nicht. „hinge“ (MIT) nutzt eine private Simulator-Schnittstelle – nur hier, nie in einer App.
+          brew install artemnovichkov/tap/hinge
+          DUO=$(xcrun simctl create "Familie Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo com.apple.CoreSimulator.SimRuntime.iOS-27-1)
+          xcrun simctl boot "$DUO"
+          # meldet „Data Migration Failed“ – harmlos
+          xcrun simctl bootstatus "$DUO" -b || true
+          xcrun simctl spawn "$DUO" defaults write com.apple.Preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl spawn "$DUO" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl status_bar "$DUO" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          if [ -n "$LOCATION" ]; then xcrun simctl location "$DUO" set "$LOCATION" || true; fi
+          xcrun simctl install "$DUO" "$APP"
+
+          # Ohne --display fotografiert simctl nach dem Klappen oft das abgeschaltete Display (schwarzes Bild).
+          # Das richtige Display wird an der Breite erkannt: außen 1398, innen 2853 (quer) bzw. 2007.
+          display_shot() {
+            for id in $(xcrun simctl io "$DUO" enumerate | awk '/UUID:/{u=$2} /Class: Display/{print u}'); do
+              xcrun simctl io "$DUO" screenshot --display="$id" pick.png >/dev/null 2>&1 || continue
+              w=$(sips -g pixelWidth pick.png | awk '/pixelWidth/{print $2}')
+              case " $2 " in *" $w "*) mv pick.png "$1"; return 0;; esac
+            done
+            echo "Kein Display mit Breite $2 für $1"
+            return 1
+          }
+          duo_scenes() {   # $1 Szenenliste, $2 erlaubte Breiten
+            while read -r scene secs name rest <&3; do
+              case "$scene" in ""|\#*) continue;; esac
+              if [ "$scene" = appearance ]; then xcrun simctl ui "$DUO" appearance "$secs"; continue; fi
+              xcrun simctl terminate "$DUO" "$BUNDLE" 2>/dev/null || true
+              # shellcheck disable=SC2086
+              xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$scene" $rest < /dev/null
+              sleep "$secs"
+              display_shot "shots/$name.png" "$2" < /dev/null || echo "::warning::$name nicht aufgenommen"
+            done 3<<< "$1"
+          }
+
+          mkdir -p shots
+          xcrun simctl ui "$DUO" appearance light
+          xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$WARMUP"
+          sleep 60
+          # Zuerst zugeklappt, dann aufgeklappt – nach dem Klappen kurz warten, die Szenen starten die App neu.
+          if [ -n "$OUTER" ]; then
+            hinge -d "$DUO" closed && sleep 5
+            duo_scenes "$OUTER" "1398"
+          fi
+          if [ -n "$INNER" ]; then
+            xcrun simctl ui "$DUO" appearance light
+            hinge -d "$DUO" open && sleep 5
+            duo_scenes "$INNER" "2853 2007"
+          fi
+          xcrun simctl shutdown "$DUO" || true
+
+      - name: Absturzberichte
+        if: always()
+        env:
+          APPNAME: ${{ inputs.app-name }}
+        run: |
+          # shellcheck disable=SC2012
+          for f in $(ls -t ~/Library/Logs/DiagnosticReports/"${APPNAME}"*.ips 2>/dev/null | head -3); do
+            echo "=== $f"
+            python3 - "$f" <<'PY'
+          import json, sys
+          lines = open(sys.argv[1]).read().split("\n", 1)
+          report = json.loads(lines[1])
+          print(json.dumps(report.get("exception"), ensure_ascii=False))
+          print(report.get("asi") or "")
+          images = report.get("usedImages", [])
+          for thread in report.get("threads", []):
+              if not thread.get("triggered"):
+                  continue
+              for frame in thread.get("frames", [])[:40]:
+                  image = images[frame.get("imageIndex", 0)].get("name", "?") if images else "?"
+                  print(image, frame.get("symbol", ""), frame.get("sourceFile", ""), frame.get("sourceLine", ""))
+          PY
+          done
+
+      - name: Auf schwarze Bilder prüfen
+        if: always()
+        run: |
+          # Ein schwarzes Bild heißt fast immer: falsches Display fotografiert. Schwarze PNGs sind winzig.
+          for f in shots/*.png; do
+            [ -f "$f" ] || continue
+            size=$(stat -f %z "$f")
+            if [ "$size" -lt 60000 ]; then echo "::warning::$f ist verdächtig klein ($size Bytes) – schwarzes Bild?"; fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: shots
+
+      - name: Screenshots ins Repo
+        if: inputs.commit && github.event_name == 'push'
+        env:
+          OUT: ${{ inputs.output-dir }}
+          SIZE: ${{ inputs.max-size }}
+        run: |
+          ls shots/*.png >/dev/null 2>&1 || exit 0
+          for f in shots/*.png; do sips -Z "$SIZE" "$f" > /dev/null; done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$GITHUB_REF_NAME"
+          git reset --hard "origin/$GITHUB_REF_NAME"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          cp shots/*.png "$OUT"/
+          git add -A "$OUT"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Screenshots aktualisiert [skip ci]"
+          git push origin HEAD:"$GITHUB_REF_NAME"
