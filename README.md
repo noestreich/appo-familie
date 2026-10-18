@@ -5,7 +5,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | Was | Wo | Eingebunden über |
 | --- | --- | --- |
 | Gestaltung, Sprache, Grundsätze, Duo-Rezept, App-Store-Stolpersteine | `DESIGN.md` | Verweis im Repo der App |
-| „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `from: "1.0.0"` |
+| „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `branch: v1` |
 | Paket-Tests (Linux) | `.github/workflows/swift-tests.yml` | `uses: …@v1` |
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
@@ -15,9 +15,10 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 
 ## Versionen
 
-- **Workflows:** Die Apps rufen `@v1` auf. `v1` ist ein mitlaufendes Tag und wird nach jeder kompatiblen Änderung neu gesetzt. Wer etwas so ändert, dass Apps ihren Aufruf anpassen müssen (neue Pflichtangabe, andere Ordner), setzt `v2` und stellt die Apps nacheinander um.
-- **Swift-Paket:** feste Versionen `1.0.0`, `1.1.0` … (SemVer). Die Apps binden mit `from: "1.0.0"` ein und bekommen kleinere Versionen mit, sobald jemand im Projekt die Pakete aktualisiert.
-- **Neues ausprobieren:** in einer App `@<branch>` statt `@v1` bzw. `branch: <branch>` statt `from:` eintragen, prüfen, danach Tag setzen und die App zurück auf die Version stellen.
+- **`v1` ist ein Branch**, kein Tag: Workflows (`@v1`) und Swift-Paket (`branch: v1`) folgen ihm. Gearbeitet wird auf `main`; ist eine Änderung in einer App erprobt, wird `v1` per Fast-Forward nachgezogen (`git push origin main:v1`, kein Force-Push). Die Cloud-Sitzungen dürfen keine Tags pushen, Branches schon – deshalb so.
+- **In `v1` nur Verträgliches:** Neue Angaben sind optional, Ordner und Namen bleiben. Muss eine App ihren Aufruf ändern (neue Pflichtangabe, andere Ordner, umbenannte Typen), entsteht `v2`, und die Apps ziehen nacheinander um.
+- **Neues ausprobieren:** in einer App `@main` bzw. `branch: main` (oder ein eigener Branch) statt `v1` eintragen, prüfen, `v1` nachziehen und die App zurück auf `v1` stellen.
+- **Feste Versionen** (`1.0.0` …) gibt es nur, wenn sie jemand auf GitHub als Release anlegt. Nötig sind sie nicht.
 
 ## Einbinden in eine App
 
@@ -27,7 +28,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 packages:
   AppoFamilie:
     url: https://github.com/noestreich/appo-familie
-    from: 1.0.0
+    branch: v1
 targets:
   MeineApp:
     dependencies:

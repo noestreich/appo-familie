@@ -12,9 +12,10 @@ Gemeinsame Regeln (`DESIGN.md`), wiederverwendbare Workflows (`.github/workflows
 
 ## Versionen
 
-- Workflows: mitlaufendes Tag `v1`. Nach einer kompatiblen Änderung `v1` neu setzen (`git tag -f v1 && git push -f origin v1` – braucht die Freigabe des Nutzers, weil es ein Force-Push ist). Unverträgliche Änderung → `v2`, Apps nacheinander umstellen.
-- Swift-Paket: SemVer-Tags `1.0.0`, `1.1.0` … nie verschieben, immer ein neues setzen.
-- Änderungen zuerst in einer App mit `@<branch>` bzw. `branch:` prüfen, erst danach taggen.
+- `v1` ist ein **Branch**, dem Workflows (`@v1`) und Swift-Paket (`branch: v1`) folgen. Gearbeitet wird auf `main`.
+- Änderungen zuerst in einer App mit `@main` bzw. `branch: main` prüfen, dann `v1` per Fast-Forward nachziehen: `git push origin main:v1`. Nie mit Force auf `v1` pushen.
+- In `v1` nur Verträgliches (neue Angaben optional, Ordner und Namen bleiben). Sonst `v2` als neuer Branch, Apps nacheinander umstellen.
+- Tags kann die Cloud-Sitzung nicht pushen (der Git-Proxy lässt nur Branches durch). Feste Versionen legt bei Bedarf der Nutzer als Release auf GitHub an.
 
 ## Bauen und prüfen
 
