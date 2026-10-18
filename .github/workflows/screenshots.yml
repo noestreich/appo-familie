@@ -74,7 +74,7 @@ on:
         type: string
         default: "1100"
       commit:
-        description: Bilder ins Repo committen (nur bei push)
+        description: Bilder ins Repo committen (nicht bei Pull Requests)
         type: boolean
         default: true
     secrets:
@@ -257,7 +257,7 @@ jobs:
           path: shots
 
       - name: Screenshots ins Repo
-        if: inputs.commit && github.event_name == 'push'
+        if: inputs.commit && github.event_name != 'pull_request'
         env:
           OUT: ${{ inputs.output-dir }}
           SIZE: ${{ inputs.max-size }}

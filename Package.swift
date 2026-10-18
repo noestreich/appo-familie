@@ -4,7 +4,7 @@ import PackageDescription
 /// Gemeinsame Bausteine der App-Familie (Kaufo, Scanno, Schreibo). Jede App bindet das Paket mit fester
 /// Version ein (`from: "1.0.0"`), damit eine Änderung hier nicht unbemerkt alle Apps verändert.
 let package = Package(
-    name: "AppFamilie",
+    name: "AppoFamilie",
     defaultLocalization: "de",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [

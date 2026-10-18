@@ -1,6 +1,6 @@
 # App-Familie – Hinweise für die Arbeit am Code
 
-Gemeinsame Regeln (`DESIGN.md`), wiederverwendbare Workflows (`.github/workflows/`), Skripte (`scripts/`) und das Swift-Paket `AppFamilie` (`Sources/`) für Kaufo ([noestreich/einkauf](https://github.com/noestreich/einkauf)), Scanno ([noestreich/scanno](https://github.com/noestreich/scanno)) und Schreibo ([noestreich/schreibo](https://github.com/noestreich/schreibo)). Einbinden und Versionen: `README.md`.
+Gemeinsame Regeln (`DESIGN.md`), wiederverwendbare Workflows (`.github/workflows/`), Skripte (`scripts/`) und das Swift-Paket `AppoFamilie` (`Sources/`) für Kaufo ([noestreich/einkauf](https://github.com/noestreich/einkauf)), Scanno ([noestreich/scanno](https://github.com/noestreich/scanno)) und Schreibo ([noestreich/schreibo](https://github.com/noestreich/schreibo)). Einbinden und Versionen: `README.md`.
 
 ## Arbeitsweise
 

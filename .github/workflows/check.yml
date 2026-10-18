@@ -39,4 +39,7 @@ jobs:
       - name: iOS-Simulator
         run: |
           set -o pipefail
-          xcodebuild build -scheme MoreApps -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO | tail -3
+          # Das Schema heißt wie das Paket (bei mehreren Produkten „<Paket>-Package“) – deshalb nachsehen.
+          SCHEME=$(xcodebuild -list -json | python3 -c "import json,sys; s=json.load(sys.stdin)['workspace']['schemes']; print(next((x for x in s if x.endswith('-Package')), s[0]))")
+          echo "Schema: $SCHEME"
+          xcodebuild build -scheme "$SCHEME" -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO | tail -3

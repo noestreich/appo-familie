@@ -7,7 +7,7 @@ Dieses Dokument beschreibt, wie Apps dieser Familie aussehen, klingen und gebaut
 Jede App bleibt ein eigenständiges Repo mit eigenem Projekt, eigener CI und eigenen Releases. Was alle gleich brauchen, kommt aus appo-familie, und zwar mit festen Versionen:
 
 - **Workflows** (`.github/workflows/`): als wiederverwendbare Workflows, eingebunden mit `uses: noestreich/appo-familie/.github/workflows/<datei>@v1`.
-- **Swift-Paket** `AppFamilie`: Produkte wie `MoreApps`, eingebunden über die Paket-URL mit `from: "1.0.0"`.
+- **Swift-Paket** `AppoFamilie`: Produkte wie `MoreApps`, eingebunden über die Paket-URL mit `from: "1.0.0"`.
 - **Skripte** (`scripts/`): App-Icon und App-Store-Rahmen, gesteuert über eine Konfigurationsdatei in der App.
 
 Eine Änderung an appo-familie erreicht eine App erst, wenn diese die Version anhebt. Neue Bausteine werden zuerst in einer App erprobt und erst danach hierher verschoben (siehe `CLAUDE.md` in appo-familie).

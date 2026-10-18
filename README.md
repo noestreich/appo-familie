@@ -5,7 +5,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | Was | Wo | Eingebunden über |
 | --- | --- | --- |
 | Gestaltung, Sprache, Grundsätze, Duo-Rezept, App-Store-Stolpersteine | `DESIGN.md` | Verweis im Repo der App |
-| „Weitere Apps von uns“ | Swift-Paket `AppFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `from: "1.0.0"` |
+| „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `from: "1.0.0"` |
 | Paket-Tests (Linux) | `.github/workflows/swift-tests.yml` | `uses: …@v1` |
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
@@ -25,13 +25,13 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 
 ```yaml
 packages:
-  AppFamilie:
+  AppoFamilie:
     url: https://github.com/noestreich/appo-familie
     from: 1.0.0
 targets:
   MeineApp:
     dependencies:
-      - package: AppFamilie
+      - package: AppoFamilie
         product: MoreApps
 ```
 
@@ -68,11 +68,12 @@ Szenen: eine Zeile pro Bild, `<szene> <sekunden> <dateiname> [weitere Startargum
 ```yaml
 name: Screenshots
 on:
-  push:
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
   workflow_dispatch:
+  push:
+    paths:          # nur wenn sich die App ändert – nicht, wenn sich nur dieser Aufruf ändert
+      - "App/**"
+      - "Packages/**"
+      - "project.yml"
 concurrency:
   group: screenshots-${{ github.ref }}
   cancel-in-progress: true
@@ -105,11 +106,9 @@ Weitere Angaben: `warmup-scene` (Standard `today`), `iphone-types`, `location`, 
 
 ```yaml
 name: App-Store-Screenshots
+# Nur per Hand starten: Ein Lauf kostet 20–50 Minuten und ändert die Bilder im Repo.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/appstore.yml"
 concurrency:
   group: appstore-${{ github.ref }}
   cancel-in-progress: true
