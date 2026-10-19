@@ -64,7 +64,7 @@ jobs:
 
 ### Screenshots (`.github/workflows/screenshots.yml`)
 
-Szenen: eine Zeile pro Bild, `<szene> <sekunden> <dateiname> [weitere Startargumente]`, gestartet mit `-demo -demoScene <szene>`. `appearance dark` bzw. `appearance light` schaltet um, Zeilen mit `#` werden übersprungen. Erst die Szenen fürs Außendisplay (zugeklappt), dann die inneren (aufgeklappt quer).
+Szenen: eine Zeile pro Bild, `<szene> <sekunden> <dateiname> [weitere Startargumente]`, gestartet mit `-demo -demoScene <szene>`. `appearance dark` bzw. `appearance light` schaltet um, Zeilen mit `#` werden übersprungen. `copy <pfad im container> <dateiname>` holt eine Datei aus dem Datencontainer der App zu den Bildern (Kaufo: das Protokoll „Was wurde gelesen?“), sie wird mit committet. Erst die Szenen fürs Außendisplay (zugeklappt), dann die inneren (aufgeklappt quer).
 
 ```yaml
 name: Screenshots
@@ -101,7 +101,7 @@ jobs:
     secrets: inherit
 ```
 
-Weitere Angaben: `warmup-scene` (Standard `today`), `iphone-types`, `location`, `output-dir` (Standard `docs/screenshots`), `max-size` (Standard 1100), `commit`.
+Weitere Angaben: `warmup-scene` (Standard `today`), `warmup-seconds` (Standard 60), `app-files` (Dateien aus dem Repo in den Datencontainer der App, eine Zeile `<pfad im repo> <pfad im container>`, z. B. `docs/testdata/einkaufszettel.jpg Documents/demo-note.jpg`), `iphone-types`, `location` (leer = keiner), `output-dir` (Standard `docs/screenshots`), `max-size` (Standard 1100), `commit`.
 
 ### App-Store-Bilder (`.github/workflows/appstore.yml`)
 
@@ -140,7 +140,7 @@ jobs:
     secrets: inherit
 ```
 
-Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
+`warmup-scene`, `warmup-seconds`, `app-files`, `iphone-types` und `location` wie bei den Screenshots. Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
 
 ### Rahmen und Icon (lokal)
 

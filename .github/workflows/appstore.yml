@@ -71,9 +71,19 @@ on:
         type: string
         default: ""
       warmup-scene:
-        description: Szene für den ersten Start, nach dem 60 Sekunden gewartet wird (Systemmitteilungen)
+        description: Szene für den ersten Start, nach dem gewartet wird (Systemmitteilungen)
         type: string
         default: today
+      warmup-seconds:
+        description: Wartezeit nach dem ersten Start in Sekunden (Systemmitteilungen, Beispieldaten anlegen)
+        type: string
+        default: "60"
+      app-files:
+        description: >-
+          Dateien aus dem Repo, die nach dem Installieren in den Datencontainer der App kommen, eine Zeile pro Datei:
+          „<pfad im repo> <pfad im container>“, z. B. „docs/testdata/zettel.jpg Documents/demo-note.jpg“
+        type: string
+        default: ""
       iphone-types:
         description: Gerätetypen in dieser Reihenfolge probieren (Fach 6,9")
         type: string
@@ -98,6 +108,8 @@ jobs:
       BUNDLE: ${{ inputs.bundle-id }}
       LOCATION: ${{ inputs.location }}
       WARMUP: ${{ inputs.warmup-scene }}
+      WARMUP_SECONDS: ${{ inputs.warmup-seconds }}
+      FILES: ${{ inputs.app-files }}
     steps:
       - uses: actions/checkout@v4
       - name: Zugriff auf appo-familie (nur wenn privat)
@@ -144,11 +156,22 @@ jobs:
         env:
           SCENES: ${{ inputs.iphone-scenes }}
         run: |
+          # Dateien in den Datencontainer der App legen (Angabe app-files)
+          put_files() {
+            [ -n "$FILES" ] || return 0
+            data=$(xcrun simctl get_app_container "$1" "$BUNDLE" data)
+            while read -r src dst <&3; do
+              case "$src" in ""|\#*) continue;; esac
+              mkdir -p "$data/$(dirname "$dst")"
+              cp "$src" "$data/$dst"
+            done 3<<< "$FILES"
+          }
           mkdir -p shots
           xcrun simctl install "$UDID" "$APP"
+          put_files "$UDID"
           xcrun simctl ui "$UDID" appearance light
           xcrun simctl launch "$UDID" "$BUNDLE" -demo -demoScene "$WARMUP"
-          sleep 60
+          sleep "$WARMUP_SECONDS"
           while read -r scene secs name rest <&3; do
             case "$scene" in ""|\#*) continue;; esac
             if [ "$scene" = appearance ]; then xcrun simctl ui "$UDID" appearance "$secs"; continue; fi
@@ -167,6 +190,16 @@ jobs:
           OUTER: ${{ inputs.duo-outer-scenes }}
           INNER: ${{ inputs.duo-inner-scenes }}
         run: |
+          # Dateien in den Datencontainer der App legen (Angabe app-files)
+          put_files() {
+            [ -n "$FILES" ] || return 0
+            data=$(xcrun simctl get_app_container "$1" "$BUNDLE" data)
+            while read -r src dst <&3; do
+              case "$src" in ""|\#*) continue;; esac
+              mkdir -p "$data/$(dirname "$dst")"
+              cp "$src" "$data/$dst"
+            done 3<<< "$FILES"
+          }
           xcodebuild -downloadPlatform iOS 2>&1 | grep -v "%" | tail -3
           brew install artemnovichkov/tap/hinge
           DUO=$(xcrun simctl create "Familie Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo com.apple.CoreSimulator.SimRuntime.iOS-27-1)
@@ -177,6 +210,7 @@ jobs:
           xcrun simctl status_bar "$DUO" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --operatorName "" || true
           if [ -n "$LOCATION" ]; then xcrun simctl location "$DUO" set "$LOCATION" || true; fi
           xcrun simctl install "$DUO" "$APP"
+          put_files "$DUO"
 
           # Display an der Breite erkennen: außen 1398, innen 2853 (quer) bzw. 2007.
           # Das zuletzt passende Display zuerst probieren: Ein Foto vom gerade abgeschalteten Display kann
@@ -214,7 +248,7 @@ jobs:
 
           xcrun simctl ui "$DUO" appearance light
           xcrun simctl launch "$DUO" "$BUNDLE" -demo -demoScene "$WARMUP"
-          sleep 60
+          sleep "$WARMUP_SECONDS"
           if [ -n "$OUTER" ]; then
             fold close
             duo_scenes "$OUTER" duoouter "1398"
@@ -236,9 +270,31 @@ jobs:
           SCENES: ${{ inputs.watch-scenes }}
         run: |
           mkdir -p watchshots
-          # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten)
+          # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten, wenn sie nicht schon im Image liegt)
           xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -15 || true
-          echo "Watch-Laufzeiten:"; xcrun simctl list runtimes | grep -i watch || echo "keine"
+          # Schreibo, 18. Oktober: Der Download meldete „watchOS 27.0“ nach zwei Sekunden, simctl führte die Laufzeit
+          # danach aber nicht als verfügbar – vermutlich war ihr Abbild noch nicht eingehängt. Deshalb bis zu drei
+          # Minuten auf eine verfügbare Laufzeit warten und sonst zeigen, warum keine da ist.
+          watch_runtimes() {
+            xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='watchOS' and r['isAvailable']))"
+          }
+          RUNTIMES=""
+          for _ in $(seq 36); do
+            RUNTIMES=$(watch_runtimes)
+            [ -n "$RUNTIMES" ] && break
+            sleep 5
+          done
+          echo "Verfügbare Watch-Laufzeiten: ${RUNTIMES:-keine}"
+          if [ -z "$RUNTIMES" ]; then
+            echo "Alle watchOS-Laufzeiten laut simctl:"
+            xcrun simctl list runtimes -j | python3 -c "
+          import json, sys
+          for r in json.load(sys.stdin)['runtimes']:
+              if r.get('platform') == 'watchOS':
+                  print(r['identifier'], r.get('version'), 'verfügbar' if r.get('isAvailable') else 'nicht verfügbar:', r.get('availabilityError', ''))"
+            echo "Abbilder (simctl runtime list):"
+            xcrun simctl runtime list 2>&1 | grep -i -A6 watch || true
+          fi
           TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
           import json, sys
           types = [t for t in json.load(sys.stdin)['devicetypes'] if 'Watch' in t['name']]
@@ -246,7 +302,7 @@ jobs:
           print(' '.join(types[i]['identifier'] for i in order))")
           WATCH=""
           last=""
-          for rt in $(xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='watchOS' and r['isAvailable']))"); do
+          for rt in $RUNTIMES; do
             for t in $TYPES; do
               out=$(xcrun simctl create "Familie Watch" "$t" "$rt" 2>&1) || { last="$t auf $rt: $out"; continue; }
               if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then WATCH="$out"; echo "$t auf $rt"; break 2; fi
