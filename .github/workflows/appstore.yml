@@ -274,8 +274,9 @@ jobs:
           xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -15 || true
           # Schreibo (18. Oktober) und Kaufo (19. Oktober), zwei Fehler:
           # 1. Der alte Filter mit r['platform'] und r['isAvailable'] fand die Laufzeit nicht, mit .get sofort.
-          # 2. Manche Runner haben eine watchOS-27.0-Laufzeit eingetragen, deren Abbild fehlt („runtime path not found“).
-          #    -downloadPlatform hält sie für installiert und lädt nichts. Dann den Eintrag löschen und neu laden.
+          # 2. Auf manchen Runnern ist watchOS 27.0 eingetragen (oft sogar „verfügbar“), aber ohne Abbild:
+          #    simctl create meldet „runtime path not found“, und -downloadPlatform hält sie für installiert.
+          #    Dann den Eintrag löschen, die Laufzeit neu laden (rund 20 Minuten) und noch einmal anlegen.
           watch_runtimes() {   # $1 = all: auch nicht verfügbare
             xcrun simctl list runtimes -j | python3 -c "
           import json, sys
@@ -285,17 +286,36 @@ jobs:
                  and (r.get('isAvailable') or sys.argv[1:] == ['all'])]
           print(' '.join(reversed(ids)))" "$@"
           }
-          wait_watch() {   # $1 = Anzahl Versuche im Abstand von fünf Sekunden
+          wait_watch() {   # $1 = Anzahl Versuche im Abstand von fünf Sekunden; danach auch nicht verfügbare
             RUNTIMES=""
             for _ in $(seq "$1"); do
               RUNTIMES=$(watch_runtimes)
-              [ -n "$RUNTIMES" ] && return 0
+              [ -n "$RUNTIMES" ] && break
               sleep 5
             done
+            [ -n "$RUNTIMES" ] || RUNTIMES=$(watch_runtimes all)
+            echo "Watch-Laufzeiten: ${RUNTIMES:-keine}"
+          }
+          TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          types = [t for t in json.load(sys.stdin)['devicetypes'] if 'Watch' in t['name']]
+          order = sorted(range(len(types)), key=lambda i: ('Ultra' not in types[i]['name'], -i))
+          print(' '.join(types[i]['identifier'] for i in order))")
+          create_watch() {
+            WATCH=""
+            last=""
+            for rt in $RUNTIMES; do
+              for t in $TYPES; do
+                out=$(xcrun simctl create "Familie Watch" "$t" "$rt" 2>&1) || { last="$t auf $rt: $out"; continue; }
+                if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then WATCH="$out"; echo "$t auf $rt"; return 0; fi
+              done
+            done
+            echo "Keine Watch anlegbar – zuletzt: ${last:-keine Laufzeit oder kein Gerätetyp gefunden}"
             return 1
           }
-          if ! wait_watch 12; then
-            echo "watchOS-Laufzeit eingetragen, aber nicht nutzbar – Eintrag löschen und neu laden:"
+          wait_watch 12
+          if ! create_watch; then
+            echo "Watch-Laufzeit löschen und neu laden:"
             xcrun simctl runtime list 2>&1 | grep -i -A3 watch || true
             for id in $(xcrun simctl runtime list -j | python3 -c "
           import json, sys
@@ -305,36 +325,8 @@ jobs:
               xcrun simctl runtime delete "$id" || true
             done
             xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -5 || true
-            wait_watch 60 || true
-          fi
-          echo "Verfügbare Watch-Laufzeiten: ${RUNTIMES:-keine}"
-          if [ -z "$RUNTIMES" ]; then
-            # Trotzdem probieren – was simctl create meldet, steht dann im Log.
-            RUNTIMES=$(watch_runtimes all)
-            echo "Alle watchOS-Laufzeiten laut simctl:"
-            xcrun simctl list runtimes -j | python3 -c "
-          import json, sys
-          for r in json.load(sys.stdin)['runtimes']:
-              if r.get('platform') == 'watchOS':
-                  print(r['identifier'], r.get('version'), 'verfügbar' if r.get('isAvailable') else 'nicht verfügbar:', r.get('availabilityError', ''))"
-          fi
-          TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
-          import json, sys
-          types = [t for t in json.load(sys.stdin)['devicetypes'] if 'Watch' in t['name']]
-          order = sorted(range(len(types)), key=lambda i: ('Ultra' not in types[i]['name'], -i))
-          print(' '.join(types[i]['identifier'] for i in order))")
-          WATCH=""
-          last=""
-          for rt in $RUNTIMES; do
-            for t in $TYPES; do
-              out=$(xcrun simctl create "Familie Watch" "$t" "$rt" 2>&1) || { last="$t auf $rt: $out"; continue; }
-              if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then WATCH="$out"; echo "$t auf $rt"; break 2; fi
-            done
-          done
-          if [ -z "$WATCH" ]; then
-            echo "Keine Watch anlegbar – zuletzt: ${last:-keine Laufzeit oder kein Gerätetyp gefunden}"
-            echo "Gerätetypen: $TYPES"
-            exit 1
+            wait_watch 60
+            create_watch || { echo "Gerätetypen: $TYPES"; exit 1; }
           fi
           xcrun simctl boot "$WATCH"
           xcrun simctl bootstatus "$WATCH" -b
