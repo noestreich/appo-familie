@@ -7,7 +7,7 @@ Dieses Dokument beschreibt, wie Apps dieser Familie aussehen, klingen und gebaut
 Jede App bleibt ein eigenständiges Repo mit eigenem Projekt, eigener CI und eigenen Releases. Was alle gleich brauchen, kommt aus appo-familie, und zwar mit festen Versionen:
 
 - **Workflows** (`.github/workflows/`): als wiederverwendbare Workflows, eingebunden mit `uses: noestreich/appo-familie/.github/workflows/<datei>@v1`.
-- **Swift-Paket** `AppoFamilie`: Produkte wie `MoreApps`, eingebunden über die Paket-URL mit `branch: v1`.
+- **Swift-Paket** `AppoFamilie`: Produkte `MoreApps` und `FamilieUI` (Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine), eingebunden über die Paket-URL mit `branch: v1`.
 - **Skripte** (`scripts/`): App-Icon und App-Store-Rahmen, gesteuert über eine Konfigurationsdatei in der App.
 
 Gearbeitet wird in appo-familie auf `main`; die Apps folgen dem Branch `v1`, der nur nach Erprobung in einer App nachgezogen wird. Neue Bausteine werden zuerst in einer App erprobt und erst danach hierher verschoben (siehe `CLAUDE.md` in appo-familie).
@@ -35,7 +35,7 @@ Gearbeitet wird in appo-familie auf `main`; die Apps folgen dem Branch `v1`, der
 
 ## Farbe
 
-Fünf Farbwelten, wählbar in den Einstellungen, jede mit Akzent, Partner (zweite Farbe des Blob-Verlaufs), Fläche und Karte. Jede App startet mit ihrer eigenen Farbwelt, damit die Apps auf dem Home-Bildschirm unterscheidbar bleiben. Werte als Hex, hell / dunkel (Quelle: `App/Theme/AppTheme.swift`):
+Fünf Farbwelten, wählbar in den Einstellungen, jede mit Akzent, Partner (zweite Farbe des Blob-Verlaufs), Fläche und Karte. Jede App startet mit ihrer eigenen Farbwelt, damit die Apps auf dem Home-Bildschirm unterscheidbar bleiben. Werte als Hex, hell / dunkel (Quelle: `Sources/FamilieUI/Farbwelt.swift`):
 
 | Farbwelt | Akzent | Partner | Fläche |
 | --- | --- | --- | --- |
@@ -47,7 +47,7 @@ Fünf Farbwelten, wählbar in den Einstellungen, jede mit Akzent, Partner (zweit
 
 Karten: FFFFFF / 24201E. Dunkelmodus ist eine eigene, gewählte Variante, keine automatische Umkehrung.
 
-Himbeere & Koralle kam mit Scanno dazu und fehlt in Kaufos Code noch (`AppTheme.swift`) – ein Grund, die Farbwelten ins gemeinsame Paket zu holen (siehe „Bausteine“). Neue Farbwelten brauchen einen Akzent mit mindestens 4:1 Kontrast zu Weiß (wie Tomatenrot), besser 4,5:1.
+Alle Apps bieten alle fünf an, die eigene Standard-Farbwelt zuerst (`AppTheme.choices(standard:)`), danach in der Reihenfolge der Tabelle. Neue Farbwelten kommen ins Paket und damit in alle Apps zugleich, samt Icon je App. Neue Farbwelten brauchen einen Akzent mit mindestens 4:1 Kontrast zu Weiß (wie Tomatenrot), besser 4,5:1.
 
 Regeln:
 - Der Akzent färbt Haken, Hauptaktionen, Abschnittsköpfe und `tint`. Text bleibt in Primär-/Sekundärfarbe, nie in Akzentfarbe für Fließtext.
@@ -56,7 +56,7 @@ Regeln:
 
 ## Typografie
 
-Sieben Schriften, alle in iOS enthalten, alle skalieren mit der dynamischen Textgröße (Quelle: `Shared/Typeface.swift`):
+Sieben Schriften, alle in iOS enthalten, alle skalieren mit der dynamischen Textgröße (Quelle: `Sources/FamilieUI/Schrift.swift`):
 
 Klar (SF Pro, Überschriften gerundet, Standard) · Rund (SF Rounded) · Klassisch (New York) · Handschrift (Noteworthy) · Filzstift (Marker Felt) · Kreide (Chalkboard SE) · Schreibmaschine (American Typewriter).
 
@@ -66,7 +66,7 @@ Klar (SF Pro, Überschriften gerundet, Standard) · Rund (SF Rounded) · Klassis
 
 ## Der Blob
 
-Organische, langsam atmende Form aus 9 Punkten auf einem Kreis, Radius verformt durch drei Sinuswellen, verbunden per Catmull-Rom-Spline (Quelle: `App/Theme/BlobButton.swift`, gleiche Formel in `scripts/make_icon.py`):
+Organische, langsam atmende Form aus 9 Punkten auf einem Kreis, Radius verformt durch drei Sinuswellen, verbunden per Catmull-Rom-Spline (Quelle: `Sources/FamilieUI/Blob.swift`, gleiche Formel in `scripts/make_icon.py`):
 
 ```
 offset(a, t) = 0.055·sin(3a + 0.9t) + 0.035·sin(5a − 1.3t) + 0.025·sin(2a + 0.55t)
@@ -75,7 +75,8 @@ r = 0.88 · halbe Kantenlänge · (1 + wobble · offset)
 
 - Füllung: Verlauf Akzent → Partner (oben links nach unten rechts).
 - Hauptknopf unten rechts, 80 pt. **Tippen** öffnet ein Fächer-Menü (Kapseln mit Symbol und Text, gestaffelt animiert), **Halten** startet direkt die Hauptaktion (bei Kaufo: Diktat). Während des Zuhörens schwingt der Blob mit der Lautstärke.
-- Als Logo (`BlobLogo`) mit weißem Haken in leeren Zuständen, Ladeanzeigen und im Onboarding.
+- Was Halten tut und die VoiceOver-Texte gibt die App dem `BlobButton` bzw. `BlobMenu` mit.
+- Als Logo (`BlobLogo`) mit dem weißen Zeichen der App (`BlobSymbol`: `.checkmark`, `.document`, `.pencil`) in leeren Zuständen, Ladeanzeigen und im Onboarding.
 - App-Icon: derselbe Blob auf Creme (FBF4E6) in der Standard-Farbwelt der App, darin ein einziges, kräftiges weißes Zeichen (Kaufo: Haken, Scanno: gefülltes Blatt mit Textzeilen). Keine dünnen Linien, Rahmen oder Kleinteile. Je Farbwelt ein eigenes Icon mit heller und dunkler Variante (dunkel: aufgehellte Farben auf der dunklen Fläche der Farbwelt), erzeugt per `scripts/make_icon.py --all`. Das Icon wechselt mit der gewählten Farbwelt (`setAlternateIconName`).
 
 ## Muster, die jede App mitbringt
@@ -266,11 +267,11 @@ Was in appo-familie liegt, wird eingebunden, nicht kopiert. Der Rest wird vorers
 | CI, Screenshots, App-Store-Bilder | appo-familie, `.github/workflows/` | erledigt |
 | App-Icon, App-Store-Rahmen | appo-familie, `scripts/make_icon.py`, `scripts/appstore_frames.py` | erledigt |
 | Webseite (Vorlage, Gestaltung, Abschnitte) | appo-familie `website/`, Inhalt je App in `docs/website/site.json` | erledigt |
-| Farbwelten | Kaufo `App/Theme/AppTheme.swift` (Himbeere & Koralle in Scanno) | Paket, Produkt `FamilieUI` |
-| Blob, Blob-Button, Logo | Kaufo `App/Theme/BlobButton.swift` | `FamilieUI` |
-| Schriften und `.appFont` | Kaufo `Shared/Typeface.swift` | `FamilieUI` |
-| Banner, Fächer-Menü | Kaufo `App/Views/ListDetailView.swift` (`BannerView`), `App/Views/InlineAddRow.swift` (`BlobMenu`) | `FamilieUI` |
-| Statistik-Bausteine | Kaufo `App/Views/StatisticsView.swift` (`StatCard`, `Tile`, `RankedBars`) | `FamilieUI` |
+| Farbwelten (`AppTheme`, `Color(light:dark:)`, `\.theme`) | appo-familie, Produkt `FamilieUI` (`Farbwelt.swift`); Standard-Farbwelt und Icon-Namen in der App | erledigt |
+| Schriften und `.appFont` (`Typeface`, `\.typeface`) | `FamilieUI` (`Schrift.swift`) | erledigt |
+| Blob, Blob-Button, Logo (`BlobShape`, `BlobButton`, `BlobLogo`, `BlobSymbol`) | `FamilieUI` (`Blob.swift`) | erledigt |
+| Banner, Fächer-Menü (`Banner`, `BannerView`, `FanItem`, `BlobFan`, `BlobMenu`) | `FamilieUI` (`Banner.swift`, `Faecher.swift`) | erledigt |
+| Statistik-Bausteine (`StatCard`, `StatTile`, `RankedBars`) | `FamilieUI` (`Statistik.swift`) | erledigt |
 | Spracheingabe | Kaufo `App/Services/SpeechInput.swift` | später, eigenes Produkt |
 | Palette und Ladenfarben | Kaufo `Shared/ListColor.swift`, `Shared/StoreBrand.swift` | bleibt in Kaufo |
 | iCloud und Haushalt | Kaufo `App/Services/Sync/` | bleibt je App (Zonen und Datensätze unterscheiden sich) |

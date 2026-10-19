@@ -6,6 +6,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | --- | --- | --- |
 | Gestaltung, Sprache, Grundsätze, Duo-Rezept, App-Store-Stolpersteine | `DESIGN.md` | Verweis im Repo der App |
 | „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `branch: v1` |
+| Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine | Swift-Paket `AppoFamilie`, Produkt `FamilieUI` (`Sources/FamilieUI`) | Paket-URL, `branch: v1` |
 | Paket-Tests (Linux) | `.github/workflows/swift-tests.yml` | `uses: …@v1` |
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
@@ -38,6 +39,25 @@ targets:
 ```
 
 In den Einstellungen ganz unten `MoreAppsSection(developerID: 776255936)`. Optionen: `additionalAppIDs`, `title`, `country`, `excludingBundleID`, `showsScreenshots`. Der „Laden“-Knopf nimmt die Akzentfarbe (`tint`) der App.
+
+`FamilieUI` kommt genauso dazu (`product: FamilieUI`), und zwar an jedes Target, das Farbe oder Schrift braucht – auch Widget und Teilen-Erweiterung. Jede Datei, die die Bausteine nutzt, braucht `import FamilieUI`. Was in der App bleibt:
+
+```swift
+import FamilieUI
+
+extension AppTheme {
+    /// Standard-Farbwelt der App
+    static let standard: AppTheme = .ultramarine
+}
+```
+
+- An der Wurzel (App und Teilen-Erweiterung) `.environment(\.theme, theme)` und `.environment(\.typeface, typeface)` setzen. Gelesen wird aus der App Group der App (`AppTheme.storageKey`, `Typeface.storageKey`), damit Widget und Erweiterungen mitlesen.
+- Einstellungen: `ForEach(AppTheme.choices(standard: .standard))` – die eigene Farbwelt zuerst.
+- App-Icon: `theme.appIconName(standard: .standard)` ergibt `AppIcon-<farbwelt>` (Kaufo hat eigene Namen).
+- Blob mit Fächer: `BlobMenu(isExpanded:items:…, onHoldStart:onHoldEnd:)`, die Einträge als `FanItem(title:symbol:action:)`. Was Halten tut und die VoiceOver-Texte (`title`, `holdTitle`, `holdHint`, `stopTitle`, `holdsWhileBusy`) sind Angaben der App. Wer den Blob selbst anordnet, nimmt `BlobFan` und `BlobButton`.
+- Logo: `BlobLogo(size:symbol:)` mit `.checkmark` (Kaufo), `.document` (Scanno), `.pencil` (Schreibo) oder einem SF-Symbol-Namen.
+- Banner: `BannerView(banner:onTap:)`, `Banner(text:isWarning:symbol:showsDetail:actionTitle:action:)`.
+- Statistik: `StatCard(title:symbol:) { … }`, `StatTile(value:label:)`, `RankedBars(rows:color:showsShare:format:)` mit `RankedBars.Row`.
 
 ### CI (`.github/workflows/ci.yml`)
 
