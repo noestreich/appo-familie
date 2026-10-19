@@ -272,10 +272,10 @@ jobs:
           mkdir -p watchshots
           # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten, wenn sie nicht schon im Image liegt)
           xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -15 || true
-          # Schreibo (18. Oktober) und Kaufo (19. Oktober): Der Download meldete watchOS 27.0 nach Sekunden als fertig,
-          # simctl führte die Laufzeit aber erst nach rund drei Minuten als verfügbar – zu spät für die Schleife.
-          # Deshalb mit .get lesen (ein Eintrag ohne Feld bricht den Filter sonst ab), bis zu fünf Minuten warten und
-          # danach jede watchOS-Laufzeit trotzdem probieren; was simctl create meldet, steht dann im Log.
+          # Schreibo (18. Oktober) und Kaufo (19. Oktober): watchOS 27.0 war geladen und laut simctl verfügbar, der alte
+          # Filter mit r['platform'] und r['isAvailable'] fand sie trotzdem nicht. Mit .get findet er sie sofort.
+          # Zur Sicherheit bis zu fünf Minuten warten und danach jede watchOS-Laufzeit probieren; was simctl create
+          # meldet, steht dann im Log.
           watch_runtimes() {   # $1 = all: auch nicht verfügbare
             xcrun simctl list runtimes -j | python3 -c "
           import json, sys
@@ -329,14 +329,20 @@ jobs:
           xcrun simctl install "$WATCH" "build/Build/Products/Debug-watchsimulator/$WATCH_APP.app"
           xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo
           sleep 45
+          # Kaufo, 19. Oktober: Das Foto brach einmal nach 60 Sekunden mit „Timeout waiting for screen surfaces“ ab.
+          # Deshalb bis zu drei Versuche, dazwischen die App neu starten; ein fehlendes Bild hält die anderen nicht auf.
           while read -r secs name rest <&3; do
             case "$secs" in ""|\#*) continue;; esac
-            xcrun simctl terminate "$WATCH" "$WATCH_BUNDLE" 2>/dev/null || true
-            # shellcheck disable=SC2086
-            xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo $rest < /dev/null
-            sleep "$secs"
-            xcrun simctl io "$WATCH" screenshot "watchshots/$name.png" < /dev/null
+            for attempt in 1 2 3; do
+              xcrun simctl terminate "$WATCH" "$WATCH_BUNDLE" 2>/dev/null || true
+              # shellcheck disable=SC2086
+              xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo $rest < /dev/null
+              sleep "$secs"
+              if xcrun simctl io "$WATCH" screenshot "watchshots/$name.png" < /dev/null; then break; fi
+              echo "::warning::Watch-Bild $name, Versuch $attempt nicht aufgenommen"
+            done
           done 3<<< "$SCENES"
+          ls watchshots/*.png >/dev/null 2>&1
 
       - name: Auf schwarze Bilder prüfen
         if: always()
