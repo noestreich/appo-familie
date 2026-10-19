@@ -89,13 +89,10 @@ Szenen: eine Zeile pro Bild, `<szene> <sekunden> <dateiname> [weitere Startargum
 
 ```yaml
 name: Screenshots
+# Nur per Hand starten (Actions → Screenshots → Run workflow): vor einer neuen Version wie 1.4,
+# nicht für Korrekturen wie 1.4.1. Ein Lauf kostet 15–25 Minuten und ändert die Bilder im Repo.
 on:
   workflow_dispatch:
-  push:
-    paths:          # nur wenn sich die App ändert – nicht, wenn sich nur dieser Aufruf ändert
-      - "App/**"
-      - "Packages/**"
-      - "project.yml"
 concurrency:
   group: screenshots-${{ github.ref }}
   cancel-in-progress: true
