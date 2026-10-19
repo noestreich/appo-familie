@@ -35,19 +35,19 @@ Gearbeitet wird in appo-familie auf `main`; die Apps folgen dem Branch `v1`, der
 
 ## Farbe
 
-Fünf Farbwelten, wählbar in den Einstellungen, jede mit Akzent, Partner (zweite Farbe des Blob-Verlaufs), Fläche und Karte. Jede App startet mit ihrer eigenen Farbwelt, damit die Apps auf dem Home-Bildschirm unterscheidbar bleiben. Werte als Hex, hell / dunkel (Quelle: `Sources/FamilieUI/Farbwelt.swift`):
+Fünf Farbwelten, wählbar in den Einstellungen, jede mit Akzent, Partner (zweite Farbe des Blob-Verlaufs), Fläche und Karte. Jede App startet mit ihrer eigenen Farbwelt, damit die Apps auf dem Home-Bildschirm unterscheidbar bleiben: Kaufo mit Tomatenrot & Creme, Scanno mit Himbeere & Koralle, Schreibo mit Ultramarin & Koralle. In dieser Farbwelt sind auch das Haupt-Icon der App und die Einstellung beim ersten Start. Werte als Hex, hell / dunkel (Quelle: `Sources/FamilieUI/Farbwelt.swift`):
 
 | Farbwelt | Akzent | Partner | Fläche |
 | --- | --- | --- | --- |
 | Tomatenrot & Creme (Standard in Kaufo) | E0442E / FF5F47 | FF8A3D / FF9A55 | FBF4E6 / 1A1513 |
 | Himbeere & Koralle (Standard in Scanno) | D63862 / FF6B8F | FF8A66 / FF9A7A | FCF2EF / 1C1214 |
+| Ultramarin & Koralle (Standard in Schreibo) | 2A3FD6 / 6B7CFF | FF6B5B / FF7F70 | F3F4FC / 111324 |
 | Kräutergrün & Zitrone | 23864F / 3FBF72 | F2CF2E / F5D84A | F6F8EC / 121812 |
-| Ultramarin & Koralle | 2A3FD6 / 6B7CFF | FF6B5B / FF7F70 | F3F4FC / 111324 |
 | Aubergine & Minze | 5E2B73 / B27AD0 | 4FD1A5 / 6FE0B8 | F6F1F7 / 18121B |
 
 Karten: FFFFFF / 24201E. Dunkelmodus ist eine eigene, gewählte Variante, keine automatische Umkehrung.
 
-Alle Apps bieten alle fünf an, die eigene Standard-Farbwelt zuerst (`AppTheme.choices(standard:)`), danach in der Reihenfolge der Tabelle. Neue Farbwelten kommen ins Paket und damit in alle Apps zugleich, samt Icon je App. Neue Farbwelten brauchen einen Akzent mit mindestens 4:1 Kontrast zu Weiß (wie Tomatenrot), besser 4,5:1.
+Alle Apps bieten alle fünf in derselben Reihenfolge an, der Reihenfolge der Tabelle (`AppTheme.allCases`). Die eigene Standard-Farbwelt rückt dabei nicht nach vorn. Neue Farbwelten kommen ins Paket und damit in alle Apps zugleich, samt Icon je App. Neue Farbwelten brauchen einen Akzent mit mindestens 4:1 Kontrast zu Weiß (wie Tomatenrot), besser 4,5:1.
 
 Regeln:
 - Der Akzent färbt Haken, Hauptaktionen, Abschnittsköpfe und `tint`. Text bleibt in Primär-/Sekundärfarbe, nie in Akzentfarbe für Fließtext.
@@ -77,7 +77,7 @@ r = 0.88 · halbe Kantenlänge · (1 + wobble · offset)
 - Hauptknopf unten rechts, 80 pt. **Tippen** öffnet ein Fächer-Menü (Kapseln mit Symbol und Text, gestaffelt animiert), **Halten** startet direkt die Hauptaktion (bei Kaufo: Diktat). Während des Zuhörens schwingt der Blob mit der Lautstärke.
 - Was Halten tut und die VoiceOver-Texte gibt die App dem `BlobButton` bzw. `BlobMenu` mit.
 - Als Logo (`BlobLogo`) mit dem weißen Zeichen der App (`BlobSymbol`: `.checkmark`, `.document`, `.pencil`) in leeren Zuständen, Ladeanzeigen und im Onboarding.
-- App-Icon: derselbe Blob auf Creme (FBF4E6) in der Standard-Farbwelt der App, darin ein einziges, kräftiges weißes Zeichen (Kaufo: Haken, Scanno: gefülltes Blatt mit Textzeilen). Keine dünnen Linien, Rahmen oder Kleinteile. Je Farbwelt ein eigenes Icon mit heller und dunkler Variante (dunkel: aufgehellte Farben auf der dunklen Fläche der Farbwelt), erzeugt per `scripts/make_icon.py --all`. Das Icon wechselt mit der gewählten Farbwelt (`setAlternateIconName`).
+- App-Icon: derselbe Blob auf Creme (FBF4E6) in der Standard-Farbwelt der App, darin ein einziges, kräftiges weißes Zeichen (Kaufo: Haken, Scanno: gefülltes Blatt mit Textzeilen, Schreibo: Stift). Keine dünnen Linien, Rahmen oder Kleinteile. Je Farbwelt ein eigenes Icon mit heller und dunkler Variante (dunkel: aufgehellte Farben auf der dunklen Fläche der Farbwelt), erzeugt per `scripts/make_icon.py --all`. Das Icon wechselt mit der gewählten Farbwelt (`setAlternateIconName`).
 
 ## Muster, die jede App mitbringt
 
