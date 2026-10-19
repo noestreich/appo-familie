@@ -23,10 +23,11 @@ Gemeinsame Regeln (`DESIGN.md`), wiederverwendbare Workflows (`.github/workflows
 - Das Paket ist für Oberflächenbausteine da (SwiftUI) und muss nicht unter Linux bauen. Plattformunabhängige Logik bleibt im eigenen Core-Paket jeder App. UIKit und StoreKit hinter `#if canImport(UIKit)`, damit der macOS-Build durchläuft.
 - macOS-Jobs laufen auf `xcode-27` mit `DEVELOPER_DIR=/Applications/Xcode_27.1.app/Contents/Developer`. Warum jeder Schritt in den Screenshot-Workflows so ist, wie er ist, steht in `DESIGN.md` („Rezept: Duo-Build und Duo-Screenshots …“). Daran nichts „vereinfachen“, ohne es in einer App zu prüfen.
 - CI sparsam nutzen: Ein Screenshot-Lauf kostet 15–25 Minuten, ein App-Store-Lauf 20–50. Änderungen an den Bild-Workflows in einer App prüfen und dabei mehrere Änderungen in einem Lauf sammeln.
+- Webseite lokal prüfen: im Ordner der App `python3 ../appo-familie/website/make_website.py --out /tmp/index.html` und den sichtbaren Text mit der bisherigen Seite vergleichen.
 - Skripte lokal prüfen: `python3 scripts/appstore_frames.py --config <app>/docs/appstore/frames.json --root <kopie von docs/appstore>` und mit den Bildern der App vergleichen.
 
 ## Nicht vergessen
 
 - Neue Bausteine in `README.md` (Tabelle und Einbinden) und in `DESIGN.md` („Bausteine“) eintragen.
-- Webseiten immer gemeinsam ändern: neuer Abschnitt oder neue Gestaltung in allen Apps zugleich (`DESIGN.md`, „Webseite“).
+- Webseiten immer gemeinsam ändern: neuer Abschnitt oder neue Gestaltung in `website/` und dann alle drei `docs/website/index.html` in derselben Sitzung neu erzeugen und committen (`DESIGN.md`, „Webseite“). Vorher die Seiten als Bilder zeigen (Chromium mit Playwright ist in der Cloud-Sitzung da).
 - Keine Markennamen in App-Store-Schlüsselwörtern, keine fremden Logos.

@@ -23,7 +23,8 @@ jobs:
       - name: Python-Skripte
         run: |
           pip install --quiet pillow
-          python3 -m py_compile scripts/*.py
+          python3 -m py_compile scripts/*.py website/*.py
+          python3 -c "import json; json.load(open('website/symbole.json'))"
           python3 scripts/make_icon.py /tmp/icon.png 2A3FD6 FF6B5B FBF4E6 stift
           python3 -c "from PIL import Image; assert Image.open('/tmp/icon.png').size == (1024, 1024)"
 

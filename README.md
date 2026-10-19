@@ -12,6 +12,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | App-Store-Bilder (6,9", Duo innen und außen, Watch) | `.github/workflows/appstore.yml` | `uses: …@v1` |
 | App-Icon | `scripts/make_icon.py` | lokal aufrufen |
 | App-Store-Rahmen | `scripts/appstore_frames.py` + `docs/appstore/frames.json` der App | lokal aufrufen |
+| Webseite (Vorlage, Gestaltung, Skript) | `website/` + `docs/website/site.json` der App | lokal aufrufen, schreibt `docs/website/index.html` |
 
 ## Versionen
 
@@ -151,6 +152,16 @@ python3 ../appo-familie/scripts/make_icon.py AppIcon.png 2A3FD6 FF6B5B FBF4E6 st
 ```
 
 `frames.json` enthält die Farben der Standard-Farbwelt und die Überschriften je Bild (Aufbau oben im Skript). Bilder, deren Name auf „dunkel“ endet, bekommen den dunklen Hintergrund. Python 3 mit Pillow.
+
+### Webseite (lokal)
+
+```bash
+python3 ../appo-familie/website/make_website.py   # liest docs/website/site.json, schreibt docs/website/index.html
+```
+
+Aufbau und Gestaltung stehen in `website/vorlage.html` und `website/stil.css`, die Symbole der Funktionskarten in `website/symbole.json`. Die App bringt in `docs/website/site.json` nur ihre Standard-Farbwelt (hell und dunkel), ihr Zeichen (`haken`, `blatt`, `stift`), ihre Texte und die Pfade ihrer Bilder mit (Aufbau oben im Skript). Die Bilder kommen aus `docs/appstore/raw…/`, das Skript verkleinert sie auf JPEG mit 660 Pixel Breite und bettet sie per base64 ein. Impressum, Kontakt und die gemeinsamen Teile der Datenschutzerklärung (Verantwortlicher, „Weitere Apps von uns“, „Diese Webseite“) stehen in der Vorlage. Adresse und Veröffentlichung der Seite bleiben, wie sie sind: Die Datei liegt weiter im Repo der App.
+
+Ändert sich die Vorlage, werden alle drei Seiten in derselben Sitzung neu erzeugt und committet.
 
 ## Öffentlich oder privat
 

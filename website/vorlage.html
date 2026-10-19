@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{titel}}</title>
+<meta name="description" content="{{beschreibung}}">
+<meta name="theme-color" content="{{hell.surface}}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{{dunkel.surface}}" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="{{favicon}}">
+<style>
+{{stil}}</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Seitennavigation">
+    <a href="#funktionen">Funktionen</a>
+    <a href="#hilfe">Hilfe</a>
+    <a href="#datenschutz">Datenschutz</a>
+    <a href="#impressum">Impressum</a>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <svg class="logo" viewBox="0 0 100 100" role="img" aria-label="{{name}}-Logo">
+        <defs><linearGradient id="blob" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--partner)"/>
+        </linearGradient></defs>
+        <path fill="url(#blob)" d="{{blob}}"/>
+        {{zeichen}}
+      </svg>
+      <h1>{{name}}</h1>
+      <p class="lead">{{einleitung}}</p>
+      <a class="button" href="{{app_store}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.62c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.65-.39 6.58 1.1 8.73.73 1.05 1.6 2.23 2.73 2.19 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.49zM14.2 6.17c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.65-1.05 1.68-.92 2.67.97.08 1.96-.49 2.56-1.22z"/></svg>
+        Im App Store laden
+      </a>
+      <p class="note">{{hinweis}}</p>
+    </div>
+    <div class="phones">
+      {{kopfbild}}
+    </div>
+  </header>
+
+  <section id="funktionen" aria-labelledby="funktionen-titel">
+    <h2 id="funktionen-titel">{{funktionen_titel}}</h2>
+    <div class="grid">
+{{funktionen}}
+    </div>
+  </section>
+
+  <section aria-label="Bildschirmfotos">
+    <div class="shots">
+{{bilder}}
+    </div>
+  </section>
+{{duo}}
+  <section id="hilfe" aria-labelledby="hilfe-titel">
+    <h2 id="hilfe-titel">Hilfe</h2>
+    <div class="legal">
+{{hilfe}}
+      <h3>Kontakt</h3>
+      <p>Fragen, Fehler, Wünsche: <a href="mailto:info@aketo.de?subject={{name}}">info@aketo.de</a></p>
+    </div>
+  </section>
+
+  <section id="datenschutz" aria-labelledby="datenschutz-titel">
+    <div class="legal">
+      <h2 id="datenschutz-titel">Datenschutzerklärung</h2>
+      <p><strong>Kurz gesagt:</strong> {{datenschutz_kurz}}</p>
+{{datenschutz}}
+      <p class="note">Stand: {{datenschutz_stand}}</p>
+    </div>
+  </section>
+
+  <section id="impressum" aria-labelledby="impressum-titel">
+    <div class="legal">
+      <h2 id="impressum-titel">Impressum</h2>
+      <p>Angaben gemäß § 5 DDG</p>
+      <p>aketo GmbH<br>
+      Baenschstr. 67<br>
+      10247 Berlin<br>
+      Deutschland</p>
+      <p>Vertreten durch die Geschäftsführer Christian Hieber und Nicolas Oestreich</p>
+      <p>E-Mail: <a href="mailto:info@aketo.de">info@aketo.de</a><br>
+      Telefon: <a href="tel:+493057707123">+49 30 57707123</a></p>
+      <p>Registergericht: Amtsgericht Berlin (Charlottenburg)<br>
+      Registernummer: HRB 135407</p>
+      <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: DE815300957</p>
+      <p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: Christian Hieber und Nicolas Oestreich, Anschrift wie oben</p>
+      <h3>Verbraucherstreitbeilegung</h3>
+      <p>Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
+    </div>
+  </section>
+
+  <footer>
+    © 2026 aketo GmbH · <a href="#datenschutz">Datenschutz</a> · <a href="#impressum">Impressum</a><br>
+    {{marken}} sind Marken der Apple Inc.
+  </footer>
+</div>
+</body>
+</html>
