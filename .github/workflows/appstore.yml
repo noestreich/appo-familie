@@ -272,10 +272,10 @@ jobs:
           mkdir -p watchshots
           # Die watchOS-Laufzeit zu Xcode 27.1 nachladen (rund 20 Minuten, wenn sie nicht schon im Image liegt)
           xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -15 || true
-          # Schreibo (18. Oktober) und Kaufo (19. Oktober): watchOS 27.0 war geladen und laut simctl verfügbar, der alte
-          # Filter mit r['platform'] und r['isAvailable'] fand sie trotzdem nicht. Mit .get findet er sie sofort.
-          # Zur Sicherheit bis zu fünf Minuten warten und danach jede watchOS-Laufzeit probieren; was simctl create
-          # meldet, steht dann im Log.
+          # Schreibo (18. Oktober) und Kaufo (19. Oktober), zwei Fehler:
+          # 1. Der alte Filter mit r['platform'] und r['isAvailable'] fand die Laufzeit nicht, mit .get sofort.
+          # 2. Manche Runner haben eine watchOS-27.0-Laufzeit eingetragen, deren Abbild fehlt („runtime path not found“).
+          #    -downloadPlatform hält sie für installiert und lädt nichts. Dann den Eintrag löschen und neu laden.
           watch_runtimes() {   # $1 = all: auch nicht verfügbare
             xcrun simctl list runtimes -j | python3 -c "
           import json, sys
@@ -285,26 +285,38 @@ jobs:
                  and (r.get('isAvailable') or sys.argv[1:] == ['all'])]
           print(' '.join(reversed(ids)))" "$@"
           }
-          RUNTIMES=""
-          for _ in $(seq 60); do
-            RUNTIMES=$(watch_runtimes)
-            [ -n "$RUNTIMES" ] && break
-            sleep 5
-          done
+          wait_watch() {   # $1 = Anzahl Versuche im Abstand von fünf Sekunden
+            RUNTIMES=""
+            for _ in $(seq "$1"); do
+              RUNTIMES=$(watch_runtimes)
+              [ -n "$RUNTIMES" ] && return 0
+              sleep 5
+            done
+            return 1
+          }
+          if ! wait_watch 12; then
+            echo "watchOS-Laufzeit eingetragen, aber nicht nutzbar – Eintrag löschen und neu laden:"
+            xcrun simctl runtime list 2>&1 | grep -i -A3 watch || true
+            for id in $(xcrun simctl runtime list -j | python3 -c "
+          import json, sys
+          entries = json.load(sys.stdin)
+          items = entries.items() if isinstance(entries, dict) else [(e.get('identifier', ''), e) for e in entries]
+          print(' '.join(key for key, value in items if key and 'watch' in json.dumps(value).lower()))"); do
+              xcrun simctl runtime delete "$id" || true
+            done
+            xcodebuild -downloadPlatform watchOS 2>&1 | grep -v "%" | tail -5 || true
+            wait_watch 60 || true
+          fi
           echo "Verfügbare Watch-Laufzeiten: ${RUNTIMES:-keine}"
           if [ -z "$RUNTIMES" ]; then
+            # Trotzdem probieren – was simctl create meldet, steht dann im Log.
             RUNTIMES=$(watch_runtimes all)
             echo "Alle watchOS-Laufzeiten laut simctl:"
             xcrun simctl list runtimes -j | python3 -c "
           import json, sys
           for r in json.load(sys.stdin)['runtimes']:
               if r.get('platform') == 'watchOS':
-                  print(r['identifier'], r.get('version'), 'verfügbar' if r.get('isAvailable') else 'nicht verfügbar:', r.get('availabilityError', ''))
-              missing = [k for k in ('identifier', 'platform', 'isAvailable') if k not in r]
-              if missing:
-                  print('Eintrag ohne', ', '.join(missing) + ':', r.get('identifier') or r.get('name'))"
-            echo "Abbilder (simctl runtime list):"
-            xcrun simctl runtime list 2>&1 | grep -i -A6 watch || true
+                  print(r['identifier'], r.get('version'), 'verfügbar' if r.get('isAvailable') else 'nicht verfügbar:', r.get('availabilityError', ''))"
           fi
           TYPES=$(xcrun simctl list devicetypes -j | python3 -c "
           import json, sys
