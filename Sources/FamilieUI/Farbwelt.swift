@@ -6,12 +6,13 @@ import AppKit
 #endif
 
 /// Die fünf Farbwelten der App-Familie, wählbar in den Einstellungen (DESIGN.md, „Farbe“).
-/// Jede App startet mit ihrer eigenen Standard-Farbwelt und zeigt sie zuerst: `AppTheme.choices(standard:)`.
+/// Jede App startet mit ihrer eigenen Standard-Farbwelt (Kaufo Tomatenrot, Scanno Himbeere, Schreibo Ultramarin).
+/// Die Einstellungen zeigen in allen Apps dieselbe Reihenfolge: `AppTheme.allCases`.
 public enum AppTheme: String, CaseIterable, Identifiable, Sendable {
-    case raspberry
     case tomato
-    case herb
+    case raspberry
     case ultramarine
+    case herb
     case aubergine
 
     /// Schlüssel in den Einstellungen (App Group der App, damit Widget und Erweiterungen mitlesen).
@@ -71,9 +72,10 @@ public enum AppTheme: String, CaseIterable, Identifiable, Sendable {
         LinearGradient(colors: [accent, partner], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
-    /// Die Farbwelten in der Reihenfolge für die Einstellungen: die Standard-Farbwelt der App zuerst.
+    /// Früher stand die Standard-Farbwelt der App vorn. Jetzt zeigen alle Apps dieselbe Reihenfolge.
+    @available(*, deprecated, message: "AppTheme.allCases nehmen – alle Apps zeigen dieselbe Reihenfolge")
     public static func choices(standard: AppTheme) -> [AppTheme] {
-        [standard] + allCases.filter { $0 != standard }
+        allCases
     }
 
     /// Name des alternativen App-Icons im Asset-Katalog (`AppIcon-<farbwelt>`), `nil` für das Haupt-Icon.
