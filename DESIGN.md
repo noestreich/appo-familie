@@ -97,7 +97,7 @@ r = 0.88 · halbe Kantenlänge · (1 + wobble · offset)
 - Plattformunabhängige Logik in einem lokalen Swift-Paket mit Tests (läuft auch unter Linux).
 - iCloud: `CKSyncEngine`, eigene Zone pro Haushalt, Teilen als zonenweiter `CKShare`. Änderungen aus Widget und Erweiterungen werden gesammelt und von der App nachgereicht.
 - **XcodeGen** (`project.yml`), das Xcode-Projekt ist nicht eingecheckt.
-- **GitHub Actions:** Linux-Tests des Pakets, iOS-Build (zeigt gebaute Produkte und Warnungen), Screenshots im Simulator per Demo-Modus, App-Store-Bilder in 1320 × 2868 mit Überschriften. Die Workflows selbst stehen in appo-familie (`swift-tests.yml`, `ios-build.yml`, `screenshots.yml`, `appstore.yml`); die App ruft sie mit ihren Szenen auf.
+- **GitHub Actions:** Linux-Tests des Pakets, iOS-Build (zeigt gebaute Produkte und Warnungen), Screenshots im Simulator per Demo-Modus, App-Store-Bilder in 1320 × 2868 mit Überschriften. Die Workflows selbst stehen in appo-familie (`swift-tests.yml`, `ios-build.yml`, `screenshots.yml`, `appstore.yml`); die App ruft sie mit ihren Szenen auf. `CI` läuft bei jedem Push. `Screenshots` und `App-Store-Screenshots` starten **nur per Hand** (`workflow_dispatch`, kein `push`): einmal vor jeder neuen Version mit neuen Funktionen (1.4), nicht für Korrekturen (1.4.1, 1.4.2).
 - **Demo-Modus** (`-demo -demoScene <szene>`): ersetzt die Daten durch feste Beispieldaten, schaltet iCloud ab, öffnet die gewünschte Ansicht. Grundlage für alle Screenshots.
 
 ## iPhone Duo (Stand Oktober 2026)
@@ -206,7 +206,8 @@ Reihenfolge im Workflow: hochfahren, App einmal starten und 60 Sekunden warten (
 
 *9. CI sparsam nutzen.* Ein `Screenshots`-Lauf mit Duo dauert 15–25 Minuten, `App-Store-Screenshots` 20–30 Minuten plus 20 für die Watch.
 
-- Erst die Duo-Szenen im `Screenshots`-Lauf prüfen, den App-Store-Lauf erst danach anfassen. Jede Änderung an der `appstore.yml` der App startet einen vollen Lauf.
+- Beide Bildläufe nur per Hand starten, nie bei `push`: vor einer neuen Version (1.4) erst `Screenshots`, dann `App-Store-Screenshots`. Bei Korrekturversionen (1.4.1) keinen Bildlauf.
+- Erst die Duo-Szenen im `Screenshots`-Lauf prüfen, den App-Store-Lauf erst danach anfassen.
 - Änderungen an den Workflows in appo-familie zuerst in einer App über einen Branch-Stand prüfen (`@<branch>` statt `@v1`), dann `v1` nachziehen.
 - `concurrency` mit `cancel-in-progress: true` lassen, mehrere Änderungen in einem Push sammeln.
 - `CI` (rund eine Minute) zuerst grün bekommen, bevor ein Bildlauf startet.
