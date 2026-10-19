@@ -1,7 +1,8 @@
 name: iOS-Build (Familie)
 
 # Wiederverwendbar: App mit Xcode 27.1 (iOS-27.1-SDK, nötig fürs iPhone Duo) für den Simulator bauen,
-# gebaute Produkte und Warnungen im eigenen Code auflisten. Ziel der App bleibt ihre Sache (iOS 26).
+# gebaute Produkte, Warnungen im eigenen Code und das Auslesen der App-Intents-Metadaten auflisten.
+# Ziel der App bleibt ihre Sache (iOS 26).
 #   jobs:
 #     ios-build:
 #       uses: noestreich/appo-familie/.github/workflows/ios-build.yml@v1
@@ -65,6 +66,8 @@ jobs:
         run: |
           echo "Produkte:"; grep -oE "${PREFIX}[A-Za-z]*\.(app|appex)" build.log | sort -u || true
           echo "Warnungen im eigenen Code:"; grep -E "^/.*warning:" build.log | grep -v "/SourcePackages/" | sort -u | head -60 || true
+          # Fehlen die Metadaten, laufen Intents in Widgets nicht (Knöpfe öffnen nur die App, konfigurierbare Widgets bleiben leer).
+          echo "App-Intents-Metadaten:"; grep -E "ExtractAppIntentsMetadata \(in target|Metadata extraction" build.log | cut -c1-200 | sort -u | head -20 || true
       - name: Fehler anzeigen
         if: failure()
         run: grep -E "error:" -A3 build.log | head -200 || true
