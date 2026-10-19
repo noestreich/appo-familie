@@ -69,6 +69,22 @@ jobs:
           # Fehlen die Metadaten, laufen Intents in Widgets nicht (Knöpfe öffnen nur die App, konfigurierbare Widgets bleiben leer).
           echo "App-Intents-Metadaten übersprungen in:"
           awk '/^ExtractAppIntentsMetadata \(in target/ { target = $0 } /Metadata extraction skipped/ { print "  " target }' build.log | sort -u || true
+      - name: App Intents in den gebauten Produkten
+        # Welche Intents und Entitäten iOS je App und Erweiterung findet. Fehlt hier etwas, ruft iOS es nie auf.
+        run: |
+          grep -E "appintentsmetadataprocessor.*(warning|error):" build.log | sed -E 's/^[0-9-]+ [0-9:.]+ //' | sort -u | head -20 || true
+          find ~/Library/Developer/Xcode/DerivedData -path "*/Build/Products/*" -name extract.actionsdata 2>/dev/null | sort | while read -r meta; do
+            echo "${meta#*/Build/Products/}"
+            python3 - "$meta" <<'PY' || true
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          def names(key):
+              value = data.get(key) or {}
+              return sorted(value.keys()) if isinstance(value, dict) else sorted(str(v.get("identifier", v)) for v in value)
+          for key in ("actions", "entities", "queries", "enums"):
+              print(f"  {key}: {', '.join(names(key)) or '–'}")
+          PY
+          done
       - name: Fehler anzeigen
         if: failure()
         run: grep -E "error:" -A3 build.log | head -200 || true
