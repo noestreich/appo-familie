@@ -165,7 +165,7 @@ jobs:
 
 Archiviert die App für den App Store, signiert sie automatisch über den API-Schlüssel (Zertifikate und Profile legt Xcode selbst an) und lädt sie zu App Store Connect hoch. Danach steht der Build in TestFlight; zur Prüfung eingereicht wird von Hand. Version und Build kommen aus `project.yml`, also vorher `MARKETING_VERSION` und `CURRENT_PROJECT_VERSION` setzen.
 
-Einmal je App-Repo die Secrets unter Settings → Secrets and variables → Actions eintragen: `ASC_ISSUER_ID`, `ASC_KEY_ID` und `ASC_KEY_P8` (ganzer Inhalt der `.p8`-Datei). Den Schlüssel legt App Store Connect unter Benutzer und Zugriff → Integrationen → App Store Connect API an.
+Einmal je App-Repo die Secrets unter Settings → Secrets and variables → Actions eintragen: `ASC_ISSUER_ID`, `ASC_KEY_ID` und `ASC_KEY_P8` (ganzer Inhalt der `.p8`-Datei). Den Schlüssel legt App Store Connect unter Benutzer und Zugriff → Integrationen → App Store Connect API an, mit der Rolle **Admin** – nur sie darf die Verteilungszertifikate in der Cloud nutzen („Cloud signing permission error“ bei App-Manager).
 
 ```yaml
 name: Veröffentlichen
