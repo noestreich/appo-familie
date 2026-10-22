@@ -6,7 +6,7 @@ name: App-Store-Screenshots (Familie)
 #   iPhone Duo außen (zugeklappt, 1398 × 2034)   → docs/appstore/raw-duo-aussen/
 #   Apple Watch (falls die App eine hat)         → docs/appstore/watch/
 # Ersetzt wird nur, was dieser Lauf neu aufgenommen hat – ein fehlendes Watch-Bild löscht das alte nicht.
-# Rahmen und Überschriften danach lokal: python3 scripts/appstore_frames.py (siehe README).
+# Rahmen, Überschriften und Upload zu App Store Connect danach im Workflow appstore-upload.yml (zweiter Job der App).
 # Erprobt in Schreibo, Oktober 2026 – die Gründe für jeden Schritt stehen in DESIGN.md („Rezept: Duo-Build …“).
 #
 # Szenen wie im Screenshots-Workflow: „<szene> <sekunden> <dateiname> [weitere Startargumente]“,

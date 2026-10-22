@@ -12,6 +12,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
 | App-Store-Bilder (6,9", Duo innen und außen, Watch) | `.github/workflows/appstore.yml` | `uses: …@v1` |
 | Veröffentlichen: archivieren, signieren, zu App Store Connect hochladen | `.github/workflows/release.yml` | `uses: …@v1` |
+| App-Store-Bilder gestalten und zu App Store Connect hochladen | `.github/workflows/appstore-upload.yml`, `scripts/appstore_upload.py` | zweiter Job im Workflow App-Store-Screenshots |
 | App-Icon | `scripts/make_icon.py` | lokal aufrufen |
 | App-Store-Rahmen | `scripts/appstore_frames.py` + `docs/appstore/frames.json` der App | lokal aufrufen |
 | Webseite (Vorlage, Gestaltung, Skript) | `website/` + `docs/website/site.json` der App | lokal aufrufen, schreibt `docs/website/index.html` |
@@ -160,6 +161,41 @@ jobs:
 ```
 
 `warmup-scene`, `warmup-seconds`, `app-files`, `iphone-types` und `location` wie bei den Screenshots. Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
+
+#### Gestalten und hochladen (`.github/workflows/appstore-upload.yml`)
+
+Legt unter Linux (Schrift Inter, wie lokal) Rahmen und Überschriften um die Rohbilder, committet `framed*/` und lädt die Bilder in die bearbeitbare Version in App Store Connect – je Ordner ins Fach mit Bildern derselben Größe, die alten Bilder des Fachs werden ersetzt. Gibt es keine bearbeitbare Version, wird die aus `project.yml` (`MARKETING_VERSION`) angelegt. Braucht dieselben Secrets wie `Veröffentlichen`. In der App als zweiter Job, mit einer Auswahl beim Start:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      ablauf:
+        description: Was tun?
+        type: choice
+        default: Fotografieren und hochladen
+        options:
+          - Fotografieren und hochladen
+          - Nur gestalten und hochladen
+          - Nur zeigen, was hochgeladen würde
+jobs:
+  appstore:
+    if: ${{ inputs.ablauf == 'Fotografieren und hochladen' }}
+    uses: noestreich/appo-familie/.github/workflows/appstore.yml@v1
+    # … wie oben
+  upload:
+    needs: appstore
+    if: ${{ !cancelled() && (needs.appstore.result == 'success' || needs.appstore.result == 'skipped') }}
+    uses: noestreich/appo-familie/.github/workflows/appstore-upload.yml@v1
+    permissions:
+      contents: write
+    with:
+      bundle-id: de.ncls.schreibo
+      dry-run: ${{ inputs.ablauf == 'Nur zeigen, was hochgeladen würde' }}
+    secrets: inherit
+```
+
+Lokal: `ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_P8="$(cat AuthKey.p8)" python3 ../appo-familie/scripts/appstore_upload.py --bundle-id de.ncls.schreibo --dry-run`.
 
 ### Veröffentlichen (`.github/workflows/release.yml`)
 

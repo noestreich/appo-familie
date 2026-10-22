@@ -1,0 +1,93 @@
+name: App-Store-Bilder hochladen (Familie)
+
+# Wiederverwendbar: Rahmen und Überschriften um die Rohbilder legen (scripts/appstore_frames.py),
+# die Ergebnisse committen und zu App Store Connect hochladen (scripts/appstore_upload.py).
+# Läuft unter Linux mit der Schrift Inter – die Rahmen sehen aus wie lokal erzeugt.
+# Hochgeladen wird in die bearbeitbare Version; gibt es keine, wird die aus project.yml angelegt.
+# Gedacht als zweiter Job im Workflow App-Store-Screenshots der App (nach dem Fotografieren oder allein):
+#   jobs:
+#     upload:
+#       needs: appstore
+#       if: ${{ !cancelled() && (needs.appstore.result == 'success' || needs.appstore.result == 'skipped') }}
+#       uses: noestreich/appo-familie/.github/workflows/appstore-upload.yml@v1
+#       permissions:
+#         contents: write
+#       with:
+#         bundle-id: de.ncls.kaufo
+#       secrets: inherit
+on:
+  workflow_call:
+    inputs:
+      bundle-id:
+        type: string
+        required: true
+      root:
+        description: Ordner mit raw/, raw-duo/, raw-duo-aussen/, watch/ und frames.json
+        type: string
+        default: docs/appstore
+      dry-run:
+        description: Nur zeigen, was hochgeladen würde (Rahmen werden trotzdem erzeugt, aber nicht committet)
+        type: boolean
+        default: false
+      familie-ref:
+        description: Stand von appo-familie für die Skripte
+        type: string
+        default: v1
+    secrets:
+      ASC_KEY_ID:
+        required: true
+      ASC_ISSUER_ID:
+        required: true
+      ASC_KEY_P8:
+        required: true
+      FAMILIE_TOKEN:
+        description: Nur nötig, solange appo-familie privat ist
+        required: false
+
+jobs:
+  upload:
+    name: Rahmen und Upload
+    runs-on: ubuntu-latest
+    steps:
+      # Neuester Stand des Branches – der Job davor hat gerade die Rohbilder committet.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/checkout@v4
+        with:
+          repository: noestreich/appo-familie
+          ref: ${{ inputs.familie-ref }}
+          path: .familie
+          token: ${{ secrets.FAMILIE_TOKEN || github.token }}
+      - name: Schrift und Python-Pakete
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-inter fonts-dejavu-core > /dev/null
+          pip install --quiet pillow cryptography
+      - name: Rahmen und Überschriften
+        env:
+          ROOT: ${{ inputs.root }}
+        run: python3 .familie/scripts/appstore_frames.py --config "$ROOT/frames.json" --root "$ROOT"
+      - name: Gestaltete Bilder ins Repo
+        if: ${{ !inputs.dry-run }}
+        env:
+          ROOT: ${{ inputs.root }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$ROOT"/framed*
+          if git diff --cached --quiet; then echo "Rahmen unverändert"; exit 0; fi
+          git commit -m "App-Store-Bilder gestaltet [skip ci]"
+          git push origin HEAD:"$GITHUB_REF_NAME"
+      - name: Hochladen zu App Store Connect
+        env:
+          ROOT: ${{ inputs.root }}
+          BUNDLE: ${{ inputs.bundle-id }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          version=$(awk -F'"' '/^ *MARKETING_VERSION:/ { print $2; exit }' project.yml)
+          args=(--bundle-id "$BUNDLE" --root "$ROOT" --version "$version")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 .familie/scripts/appstore_upload.py "${args[@]}"
