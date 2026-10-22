@@ -122,8 +122,12 @@ def find_version(connect, app_id, version_string, dry_run):
         attributes = version["attributes"]
         if attributes["versionString"] == version_string:
             state = attributes.get("appVersionState") or attributes.get("appStoreState")
-            fail(f"Version {version_string} ist nicht bearbeitbar ({state}) – Bilder lassen sich erst wieder "
-                 "ändern, wenn Apple sie abgelehnt hat oder du eine neue Version anlegst")
+            message = (f"Version {version_string} ist nicht bearbeitbar ({state}) – Bilder lassen sich erst wieder "
+                       "ändern, wenn Apple sie abgelehnt hat oder du eine neue Version anlegst")
+            if not dry_run:
+                fail(message)
+            print(f"::warning::{message}")
+            return None, newest
     if not version_string:
         fail("Keine bearbeitbare Version in App Store Connect und keine Version angegeben (--version)")
     if dry_run:
