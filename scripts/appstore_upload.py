@@ -15,7 +15,8 @@ Was passiert:
        watch/              410 × 502   (Apple Watch Ultra)
      Das Fach ergibt sich aus der Bildgröße: Liegt in der Version (oder, falls es noch keine bearbeitbare gibt,
      in der neuesten) schon ein Fach mit Bildern dieser Größe, kommt es dorthin. Sonst gilt die Tabelle FALLBACK;
-     fehlt die Größe auch dort, wird der Ordner übersprungen.
+     fehlt die Größe auch dort, wird der Ordner übersprungen. Ordner mit demselben Fach (Duo innen und außen,
+     wenn beide im Duo-Fach liegen) kommen zusammen hinein, höchstens zehn Bilder je Fach.
 
 --dry-run zeigt nur, was hochgeladen würde. Nur Python 3 und das Paket cryptography.
 """
@@ -150,17 +151,17 @@ def localization_of(connect, version_id, locale):
 
 
 def existing_sets(connect, localization_id):
-    """Fach → (Set-ID, Größe der vorhandenen Bilder oder None, IDs der Bilder)."""
+    """Fach → (Set-ID, Größen der vorhandenen Bilder, IDs der Bilder). Ein Fach kann mehrere Größen haben,
+    etwa das des iPhone Duo mit Bildern von innen und außen."""
     result = {}
     for item in connect.all(f"/v1/appStoreVersionLocalizations/{localization_id}/appScreenshotSets?limit=50"):
         shots = connect.all(f"/v1/appScreenshotSets/{item['id']}/appScreenshots?limit=50")
-        size = None
+        sizes = set()
         for shot in shots:
             asset = shot["attributes"].get("imageAsset") or {}
             if asset.get("width"):
-                size = (asset["width"], asset["height"])
-                break
-        result[item["attributes"]["screenshotDisplayType"]] = (item["id"], size, [s["id"] for s in shots])
+                sizes.add((asset["width"], asset["height"]))
+        result[item["attributes"]["screenshotDisplayType"]] = (item["id"], sizes, [s["id"] for s in shots])
     return result
 
 
@@ -168,7 +169,7 @@ def display_type_for(size, sets, reference):
     flipped = (size[1], size[0])
     for candidates in (sets, reference):
         for display_type, (_, existing, _) in candidates.items():
-            if existing in (size, flipped):
+            if size in existing or flipped in existing:
                 return display_type
     return FALLBACK.get(size) or FALLBACK.get(flipped)
 
@@ -246,12 +247,13 @@ def main():
         if reference_localization:
             reference = existing_sets(connect, reference_localization)
     for label, candidates in (("vorhanden", sets), ("in der neuesten Version", reference)):
-        for display_type, (_, size, shots) in sorted(candidates.items()):
-            print(f"  {label}: {display_type} – {len(shots)} Bilder, {size[0]} × {size[1]}" if size
-                  else f"  {label}: {display_type} – leer")
+        for display_type, (_, sizes, shots) in sorted(candidates.items()):
+            described = ", ".join(f"{w} × {h}" for w, h in sorted(sizes)) or "leer"
+            print(f"  {label}: {display_type} – {len(shots)} Bilder, {described}")
 
     root = Path(args.root)
-    plan = []
+    # Fach → Ordner und Bilder; mehrere Ordner können in ein Fach gehen (Duo innen und außen).
+    plan = {}
     for folder in FOLDERS:
         files = sorted((root / folder).glob("*.png"))
         if not files:
@@ -264,17 +266,21 @@ def main():
         if not display_type:
             print(f"::warning::{folder}/ ({size[0]} × {size[1]}): kein passendes Fach in App Store Connect – übersprungen")
             continue
-        if len(files) > 10:
-            print(f"::warning::{folder}/: App Store Connect nimmt höchstens 10 Bilder je Fach, die übrigen fallen weg")
-            files = files[:10]
         print(f"{folder}/ → {display_type}: {', '.join(f.name for f in files)}")
-        plan.append((folder, display_type, files))
+        folders, collected = plan.setdefault(display_type, ([], []))
+        folders.append(folder)
+        collected.extend(files)
+    for display_type, (folders, files) in plan.items():
+        if len(files) > 10:
+            print(f"::warning::{display_type}: App Store Connect nimmt höchstens 10 Bilder je Fach, die übrigen fallen weg")
+            del files[10:]
 
     if args.dry_run or not plan:
         return
 
     summary = []
-    for folder, display_type, files in plan:
+    for display_type, (folders, files) in plan.items():
+        folder = " + ".join(f"{name}/" for name in folders)
         if display_type in sets:
             set_id, _, old = sets[display_type]
         else:
@@ -291,7 +297,7 @@ def main():
         new = [upload(connect, set_id, path) for path in files]
         wait_until_processed(connect, new)
         print(f"✓ {display_type}: {len(new)} Bilder")
-        summary.append(f"- {folder}/ → {display_type}: {len(new)} Bilder")
+        summary.append(f"- {folder} → {display_type}: {len(new)} Bilder")
 
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if step_summary:
