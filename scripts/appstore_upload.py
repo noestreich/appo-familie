@@ -13,8 +13,9 @@ Was passiert:
        framed-duo/        2853 × 2007  (iPhone Duo innen)
        framed-duo-aussen/ 1398 × 2034  (iPhone Duo außen)
        watch/              410 × 502   (Apple Watch Ultra)
-     Das Fach ergibt sich aus der Bildgröße: Liegt in der Version schon ein Fach mit Bildern dieser Größe,
-     kommt es dorthin. Sonst gilt die Tabelle FALLBACK; fehlt die Größe auch dort, wird der Ordner übersprungen.
+     Das Fach ergibt sich aus der Bildgröße: Liegt in der Version (oder, falls es noch keine bearbeitbare gibt,
+     in der neuesten) schon ein Fach mit Bildern dieser Größe, kommt es dorthin. Sonst gilt die Tabelle FALLBACK;
+     fehlt die Größe auch dort, wird der Ordner übersprungen.
 
 --dry-run zeigt nur, was hochgeladen würde. Nur Python 3 und das Paket cryptography.
 """
@@ -107,25 +108,45 @@ def image_size(path):
 
 
 def find_version(connect, app_id, version_string, dry_run):
+    """(bearbeitbare Version oder None, neueste Version als Vorlage für die Fächer oder None)."""
     versions = connect.all(f"/v1/apps/{app_id}/appStoreVersions?filter[platform]=IOS&limit=50")
+    versions.sort(key=lambda v: v["attributes"].get("createdDate") or "", reverse=True)
+    newest = versions[0]["id"] if versions else None
     for version in versions:
         attributes = version["attributes"]
         state = attributes.get("appVersionState") or attributes.get("appStoreState")
         if state in EDITABLE or attributes.get("appStoreState") in EDITABLE:
             print(f"Version {attributes['versionString']} ({state}) wird bearbeitet")
-            return version["id"]
+            return version["id"], newest
+    for version in versions:
+        attributes = version["attributes"]
+        if attributes["versionString"] == version_string:
+            state = attributes.get("appVersionState") or attributes.get("appStoreState")
+            message = (f"Version {version_string} ist nicht bearbeitbar ({state}) – Bilder lassen sich erst wieder "
+                       "ändern, wenn Apple sie abgelehnt hat oder du eine neue Version anlegst")
+            if not dry_run:
+                fail(message)
+            print(f"::warning::{message}")
+            return None, newest
     if not version_string:
         fail("Keine bearbeitbare Version in App Store Connect und keine Version angegeben (--version)")
     if dry_run:
-        print(f"Würde Version {version_string} anlegen")
-        return None
+        print(f"Würde Version {version_string} anlegen (Fächer wie in der neuesten Version)")
+        return None, newest
     created = connect.call("POST", "/v1/appStoreVersions", {"data": {
         "type": "appStoreVersions",
         "attributes": {"platform": "IOS", "versionString": version_string},
         "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
     }})
     print(f"Version {version_string} angelegt")
-    return created["data"]["id"]
+    return created["data"]["id"], newest
+
+
+def localization_of(connect, version_id, locale):
+    for item in connect.all(f"/v1/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=50"):
+        if item["attributes"]["locale"] == locale:
+            return item["id"]
+    return None
 
 
 def existing_sets(connect, localization_id):
@@ -143,11 +164,12 @@ def existing_sets(connect, localization_id):
     return result
 
 
-def display_type_for(size, sets):
+def display_type_for(size, sets, reference):
     flipped = (size[1], size[0])
-    for display_type, (_, existing, _) in sets.items():
-        if existing in (size, flipped):
-            return display_type
+    for candidates in (sets, reference):
+        for display_type, (_, existing, _) in candidates.items():
+            if existing in (size, flipped):
+                return display_type
     return FALLBACK.get(size) or FALLBACK.get(flipped)
 
 
@@ -209,19 +231,24 @@ def main():
     locale = app["attributes"].get("primaryLocale", "de-DE")
     print(f"App {app['attributes']['name']} ({args.bundle_id}), Sprache {locale}")
 
-    version_id = find_version(connect, app["id"], args.version, args.dry_run)
+    version_id, newest_id = find_version(connect, app["id"], args.version, args.dry_run)
     sets = {}
+    reference = {}
     localization_id = None
     if version_id:
-        for item in connect.all(f"/v1/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=50"):
-            if item["attributes"]["locale"] == locale:
-                localization_id = item["id"]
+        localization_id = localization_of(connect, version_id, locale)
         if not localization_id:
             fail(f"Die Version hat keine Sprache {locale}")
         sets = existing_sets(connect, localization_id)
-        for display_type, (_, size, shots) in sorted(sets.items()):
-            print(f"  vorhanden: {display_type} – {len(shots)} Bilder, {size[0]} × {size[1]}" if size
-                  else f"  vorhanden: {display_type} – leer")
+    # Welche Größe in welches Fach gehört, lernt das Skript auch aus der neuesten Version (etwa die Duo-Fächer).
+    if newest_id and newest_id != version_id:
+        reference_localization = localization_of(connect, newest_id, locale)
+        if reference_localization:
+            reference = existing_sets(connect, reference_localization)
+    for label, candidates in (("vorhanden", sets), ("in der neuesten Version", reference)):
+        for display_type, (_, size, shots) in sorted(candidates.items()):
+            print(f"  {label}: {display_type} – {len(shots)} Bilder, {size[0]} × {size[1]}" if size
+                  else f"  {label}: {display_type} – leer")
 
     root = Path(args.root)
     plan = []
@@ -233,7 +260,7 @@ def main():
         if len(sizes) > 1:
             fail(f"{folder}/ enthält Bilder verschiedener Größen: {sorted(sizes)}")
         size = sizes.pop()
-        display_type = display_type_for(size, sets)
+        display_type = display_type_for(size, sets, reference)
         if not display_type:
             print(f"::warning::{folder}/ ({size[0]} × {size[1]}): kein passendes Fach in App Store Connect – übersprungen")
             continue
