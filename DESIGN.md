@@ -97,7 +97,7 @@ r = 0.88 · halbe Kantenlänge · (1 + wobble · offset)
 - Plattformunabhängige Logik in einem lokalen Swift-Paket mit Tests (läuft auch unter Linux).
 - iCloud: `CKSyncEngine`, eigene Zone pro Haushalt, Teilen als zonenweiter `CKShare`. Änderungen aus Widget und Erweiterungen werden gesammelt und von der App nachgereicht.
 - **XcodeGen** (`project.yml`), das Xcode-Projekt ist nicht eingecheckt.
-- **GitHub Actions:** Linux-Tests des Pakets, iOS-Build (zeigt gebaute Produkte und Warnungen), Screenshots im Simulator per Demo-Modus, App-Store-Bilder in 1320 × 2868 mit Überschriften. Die Workflows selbst stehen in appo-familie (`swift-tests.yml`, `ios-build.yml`, `screenshots.yml`, `appstore.yml`); die App ruft sie mit ihren Szenen auf. `CI` läuft bei jedem Push. `Screenshots` und `App-Store-Screenshots` starten **nur per Hand** (`workflow_dispatch`, kein `push`): einmal vor jeder neuen Version mit neuen Funktionen (1.4), nicht für Korrekturen (1.4.1, 1.4.2).
+- **GitHub Actions:** Linux-Tests des Pakets, iOS-Build (zeigt gebaute Produkte und Warnungen), Screenshots im Simulator per Demo-Modus, App-Store-Bilder in 1320 × 2868 mit Überschriften. Die Workflows selbst stehen in appo-familie (`swift-tests.yml`, `ios-build.yml`, `screenshots.yml`, `appstore.yml`, `release.yml`); die App ruft sie mit ihren Szenen auf. `Veröffentlichen` (`release.yml`) archiviert, signiert und lädt zu App Store Connect hoch – ebenfalls nur per Hand, eingereicht wird weiter in App Store Connect. `CI` läuft bei jedem Push. `Screenshots` und `App-Store-Screenshots` starten **nur per Hand** (`workflow_dispatch`, kein `push`): einmal vor jeder neuen Version mit neuen Funktionen (1.4), nicht für Korrekturen (1.4.1, 1.4.2).
 - **Demo-Modus** (`-demo -demoScene <szene>`): ersetzt die Daten durch feste Beispieldaten, schaltet iCloud ab, öffnet die gewünschte Ansicht. Grundlage für alle Screenshots.
 
 ## iPhone Duo (Stand Oktober 2026)
@@ -266,6 +266,7 @@ Was in appo-familie liegt, wird eingebunden, nicht kopiert. Der Rest wird vorers
 | --- | --- | --- |
 | „Weitere Apps von uns“ (ganz unten in den Einstellungen) | appo-familie, Produkt `MoreApps` | erledigt |
 | CI, Screenshots, App-Store-Bilder | appo-familie, `.github/workflows/` | erledigt |
+| Veröffentlichen (archivieren, signieren, zu App Store Connect hochladen) | appo-familie, `.github/workflows/release.yml` | in Kaufo in Erprobung |
 | App-Icon, App-Store-Rahmen | appo-familie, `scripts/make_icon.py`, `scripts/appstore_frames.py` | erledigt |
 | Webseite (Vorlage, Gestaltung, Abschnitte) | appo-familie `website/`, Inhalt je App in `docs/website/site.json` | erledigt |
 | Farbwelten (`AppTheme`, `Color(light:dark:)`, `\.theme`) | appo-familie, Produkt `FamilieUI` (`Farbwelt.swift`); Standard-Farbwelt und Icon-Namen in der App | erledigt |

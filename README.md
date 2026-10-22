@@ -11,6 +11,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
 | App-Store-Bilder (6,9", Duo innen und außen, Watch) | `.github/workflows/appstore.yml` | `uses: …@v1` |
+| Veröffentlichen: archivieren, signieren, zu App Store Connect hochladen | `.github/workflows/release.yml` | `uses: …@v1` |
 | App-Icon | `scripts/make_icon.py` | lokal aufrufen |
 | App-Store-Rahmen | `scripts/appstore_frames.py` + `docs/appstore/frames.json` der App | lokal aufrufen |
 | Webseite (Vorlage, Gestaltung, Skript) | `website/` + `docs/website/site.json` der App | lokal aufrufen, schreibt `docs/website/index.html` |
@@ -159,6 +160,31 @@ jobs:
 ```
 
 `warmup-scene`, `warmup-seconds`, `app-files`, `iphone-types` und `location` wie bei den Screenshots. Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
+
+### Veröffentlichen (`.github/workflows/release.yml`)
+
+Archiviert die App für den App Store, signiert sie automatisch über den API-Schlüssel (Zertifikate und Profile legt Xcode selbst an) und lädt sie zu App Store Connect hoch. Danach steht der Build in TestFlight; zur Prüfung eingereicht wird von Hand. Version und Build kommen aus `project.yml`, also vorher `MARKETING_VERSION` und `CURRENT_PROJECT_VERSION` setzen.
+
+Einmal je App-Repo die Secrets unter Settings → Secrets and variables → Actions eintragen: `ASC_ISSUER_ID`, `ASC_KEY_ID` und `ASC_KEY_P8` (ganzer Inhalt der `.p8`-Datei). Den Schlüssel legt App Store Connect unter Benutzer und Zugriff → Integrationen → App Store Connect API an.
+
+```yaml
+name: Veröffentlichen
+# Nur per Hand starten: archiviert, signiert und lädt zu App Store Connect hoch (10–20 Minuten).
+on:
+  workflow_dispatch:
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    uses: noestreich/appo-familie/.github/workflows/release.yml@v1
+    with:
+      project: Kaufo.xcodeproj
+      scheme: Kaufo
+    secrets: inherit
+```
+
+`team-id` ist optional (leer = `DEVELOPMENT_TEAM` aus dem Projekt).
 
 ### Rahmen und Icon (lokal)
 
