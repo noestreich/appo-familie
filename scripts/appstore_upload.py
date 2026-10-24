@@ -44,6 +44,10 @@ FALLBACK = {
     (1320, 2868): "APP_IPHONE_67",
     (1206, 2622): "APP_IPHONE_61",
     (2064, 2752): "APP_IPAD_PRO_3GEN_129",
+    # iPhone Duo: innen und außen im selben Fach. Fehlt eine Größe dort (etwa nach einem abgebrochenen Lauf),
+    # findet sie das Fach trotzdem.
+    (2853, 2007): "APP_IPHONE_DUO",
+    (1398, 2034): "APP_IPHONE_DUO",
     (410, 502): "APP_WATCH_ULTRA",
 }
 
@@ -63,6 +67,11 @@ class RetryableError(Exception):
     """Überlastung oder Serverfehler bei App Store Connect – lohnt einen neuen Versuch."""
 
 
+class RejectedError(RetryableError):
+    """Abgewiesen, bevor etwas passiert ist (401, 429) – auch beim Anlegen gefahrlos zu wiederholen.
+    App Store Connect antwortet zwischendurch mit 401 auf gültige Schlüssel (Kaufo, 24. Oktober)."""
+
+
 class Connect:
     def __init__(self, key_id, issuer_id, key_p8):
         self.key_id = key_id
@@ -72,7 +81,8 @@ class Connect:
     def token(self):
         now = int(time.time())
         header = {"alg": "ES256", "kid": self.key_id, "typ": "JWT"}
-        payload = {"iss": self.issuer_id, "iat": now, "exp": now + 15 * 60, "aud": "appstoreconnect-v1"}
+        # iat eine Minute zurück: geht die Uhr des Runners leicht vor, weist Apple den Schlüssel sonst ab.
+        payload = {"iss": self.issuer_id, "iat": now - 60, "exp": now + 15 * 60, "aud": "appstoreconnect-v1"}
         signing_input = f"{b64url(json.dumps(header).encode())}.{b64url(json.dumps(payload).encode())}"
         der = self.key.sign(signing_input.encode(), ec.ECDSA(hashes.SHA256()))
         r, s = utils.decode_dss_signature(der)
@@ -81,13 +91,15 @@ class Connect:
     def call(self, method, path, body=None):
         # App Store Connect antwortet manchmal minutenlang nicht (Kaufo, 24. Oktober: Bestätigen eines Bilds
         # nach 60 Sekunden abgebrochen, das Fach blieb halb gefüllt). Abfragen, Bestätigen und Löschen lassen
-        # sich gefahrlos wiederholen; Anlegen (POST) nicht, sonst entstünden doppelte Bilder.
-        attempts = 1 if method == "POST" else 4
+        # sich gefahrlos wiederholen; Anlegen (POST) nur, wenn Apple die Anfrage abgewiesen hat, sonst
+        # entstünden doppelte Bilder. Jeder Versuch bekommt einen frisch signierten Schlüssel.
+        attempts = 4
         for attempt in range(1, attempts + 1):
             try:
                 return self._send(method, path, body)
             except (TimeoutError, urllib.error.URLError, RetryableError) as error:
-                if isinstance(error, urllib.error.HTTPError) or attempt == attempts:
+                safe = method != "POST" or isinstance(error, RejectedError)
+                if isinstance(error, urllib.error.HTTPError) or not safe or attempt == attempts:
                     raise
                 print(f"::warning::{method} {path}: {error} – neuer Versuch ({attempt + 1}/{attempts})")
                 time.sleep(10 * attempt)
@@ -104,7 +116,9 @@ class Connect:
                 raw = response.read()
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
-            if error.code == 429 or error.code >= 500:
+            if error.code in (401, 429):
+                raise RejectedError(f"HTTP {error.code}") from None
+            if error.code >= 500:
                 raise RetryableError(f"HTTP {error.code}") from None
             text = error.read().decode(errors="replace")
             try:
