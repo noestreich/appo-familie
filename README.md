@@ -6,7 +6,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | --- | --- | --- |
 | Gestaltung, Sprache, Grundsätze, Duo-Rezept, App-Store-Stolpersteine | `DESIGN.md` | Verweis im Repo der App |
 | „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `branch: v1` |
-| Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine | Swift-Paket `AppoFamilie`, Produkt `FamilieUI` (`Sources/FamilieUI`) | Paket-URL, `branch: v1` |
+| Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine, Gerätename (`Device.name`) | Swift-Paket `AppoFamilie`, Produkt `FamilieUI` (`Sources/FamilieUI`) | Paket-URL, `branch: v1` |
 | Paket-Tests (Linux) | `.github/workflows/swift-tests.yml` | `uses: …@v1` |
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
