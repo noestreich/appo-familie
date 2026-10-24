@@ -19,7 +19,8 @@ frames.json (Farben als Hex, Überschriften als [Titel, Untertitel] je Dateiname
     "duo_outer_captions": {"01-aussen": ["…", "…"]},
     "ipad_captions":      {"01-ipad": ["…", "…"]}
   }
-Ohne "ipad_captions" nimmt das iPad die Überschriften aus "captions" (gleicher Dateiname).
+Das iPad nimmt die Überschriften aus "captions" (gleicher Dateiname); "ipad_captions" ersetzt einzelne davon,
+z. B. wenn im Text „iPhone“ steht.
 Fehlende Farben nimmt das Skript aus der Standard-Farbwelt (Ultramarin & Koralle).
 """
 import argparse
@@ -216,7 +217,7 @@ def main():
                  lambda shot: DUO if shot.height >= shot.width else (DUO[1], DUO[0]), 0.035, "Duo ")
     frame_folder(root / "raw-duo-aussen", root / "framed-duo-aussen", config.get("duo_outer_captions", {}), colors,
                  lambda shot: DUO_OUTER, 0.09, "Duo außen ")
-    frame_folder(root / "raw-ipad", root / "framed-ipad", config.get("ipad_captions", config.get("captions", {})), colors,
+    frame_folder(root / "raw-ipad", root / "framed-ipad", {**config.get("captions", {}), **config.get("ipad_captions", {})}, colors,
                  lambda shot: IPAD if shot.height >= shot.width else (IPAD[1], IPAD[0]), 0.035, "iPad ")
 
 
