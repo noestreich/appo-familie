@@ -1,7 +1,7 @@
 name: Screenshots (Familie)
 
 # Wiederverwendbar: Demo-Szenen im iPhone-Simulator und im iPhone Duo (zu- und aufgeklappt) aufnehmen,
-# auf 1100 Pixel lange Seite verkleinern und nach docs/screenshots/ committen.
+# auf 1100 Pixel lange Seite verkleinern und nach docs/screenshots/ committen. Auf Wunsch auch im iPad (ipad-scenes).
 # Erprobt in Schreibo, Oktober 2026 – die Gründe für jeden Schritt stehen in DESIGN.md („Rezept: Duo-Build …“).
 #
 # Szenen: eine Zeile pro Bild, „<szene> <sekunden> <dateiname> [weitere Startargumente]“, gestartet mit
@@ -53,6 +53,14 @@ on:
         default: ""
       duo-inner-scenes:
         description: Szenen fürs innere Display (aufgeklappt quer, 2853 × 2007); leer = keine
+        type: string
+        default: ""
+      ipad-scenes:
+        description: Szenen fürs iPad mit 13 Zoll (hochkant, 2064 × 2752); leer = keine. Die App braucht dafür TARGETED_DEVICE_FAMILY "1,2"
+        type: string
+        default: ""
+      ipad-types:
+        description: Gerätetypen fürs iPad zuerst probieren; danach das neueste iPad Pro mit 13 Zoll
         type: string
         default: ""
       warmup-scene:
@@ -271,6 +279,67 @@ jobs:
             duo_scenes "$INNER" "2853 2007"
           fi
           xcrun simctl shutdown "$DUO" || true
+
+      - name: iPad
+        if: inputs.ipad-scenes != ''
+        env:
+          SCENES: ${{ inputs.ipad-scenes }}
+          TYPES: ${{ inputs.ipad-types }}
+          WARMUP: ${{ inputs.warmup-scene }}
+          WARMUP_SECONDS: ${{ inputs.warmup-seconds }}
+          FILES: ${{ inputs.app-files }}
+          LOCATION: ${{ inputs.location }}
+        run: |
+          # Dateien in den Datencontainer der App legen (Angabe app-files)
+          put_files() {
+            [ -n "$FILES" ] || return 0
+            data=$(xcrun simctl get_app_container "$1" "$BUNDLE" data)
+            while read -r src dst <&3; do
+              case "$src" in ""|\#*) continue;; esac
+              mkdir -p "$data/$(dirname "$dst")"
+              cp "$src" "$data/$dst"
+            done 3<<< "$FILES"
+          }
+          # Gerätetyp: zuerst die Angabe ipad-types, dann das neueste iPad Pro mit 13 Zoll, das Xcode kennt
+          # (2064 × 2752, Fach „iPad 13 Zoll“ in App Store Connect). Läuft auf der vorinstallierten Laufzeit.
+          KNOWN=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          types = [t for t in json.load(sys.stdin)['devicetypes'] if t['name'].startswith('iPad Pro') and '13' in t['name']]
+          print(' '.join(t['identifier'] for t in reversed(types)))")
+          IPAD=""
+          for rt in $(xcrun simctl list runtimes -j | python3 -c "import json,sys; print(' '.join(r['identifier'] for r in reversed(json.load(sys.stdin)['runtimes']) if r['platform']=='iOS' and r['isAvailable']))"); do
+            for t in $(for name in $TYPES; do echo "com.apple.CoreSimulator.SimDeviceType.$name"; done) $KNOWN; do
+              out=$(xcrun simctl create "Familie iPad" "$t" "$rt" 2>&1) || continue
+              if echo "$out" | grep -qE '^[0-9A-F-]{36}$'; then IPAD="$out"; echo "$t auf $rt"; break 2; fi
+            done
+          done
+          if [ -z "$IPAD" ]; then echo "::error::Kein iPad mit 13 Zoll anlegbar (Gerätetypen: $TYPES $KNOWN)"; exit 1; fi
+          xcrun simctl boot "$IPAD"
+          xcrun simctl bootstatus "$IPAD" -b
+          xcrun simctl spawn "$IPAD" defaults write com.apple.Preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl spawn "$IPAD" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+          xcrun simctl status_bar "$IPAD" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 || true
+          if [ -n "$LOCATION" ]; then xcrun simctl location "$IPAD" set "$LOCATION" || true; fi
+          xcrun simctl install "$IPAD" "$APP"
+          put_files "$IPAD"
+          xcrun simctl ui "$IPAD" appearance light
+          xcrun simctl launch "$IPAD" "$BUNDLE" -demo -demoScene "$WARMUP"
+          sleep "$WARMUP_SECONDS"
+          mkdir -p shots
+          while read -r scene secs name rest <&3; do
+            case "$scene" in ""|\#*) continue;; esac
+            if [ "$scene" = appearance ]; then xcrun simctl ui "$IPAD" appearance "$secs"; continue; fi
+            if [ "$scene" = copy ]; then
+              cp "$(xcrun simctl get_app_container "$IPAD" "$BUNDLE" data)/$secs" "shots/$name" || echo "::warning::$secs nicht gefunden"
+              continue
+            fi
+            xcrun simctl terminate "$IPAD" "$BUNDLE" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            xcrun simctl launch "$IPAD" "$BUNDLE" -demo -demoScene "$scene" $rest < /dev/null
+            sleep "$secs"
+            xcrun simctl io "$IPAD" screenshot "shots/$name.png" < /dev/null
+          done 3<<< "$SCENES"
+          xcrun simctl shutdown "$IPAD" || true
 
       - name: Absturzberichte
         if: always()

@@ -12,6 +12,7 @@ Was passiert:
        framed-6.3/        1206 × 2622  (iPhone 6,3")
        framed-duo/        2853 × 2007  (iPhone Duo innen)
        framed-duo-aussen/ 1398 × 2034  (iPhone Duo außen)
+       framed-ipad/       2064 × 2752  (iPad 13 Zoll)
        watch/              410 × 502   (Apple Watch Ultra)
      Das Fach ergibt sich aus der Bildgröße: Liegt in der Version (oder, falls es noch keine bearbeitbare gibt,
      in der neuesten) schon ein Fach mit Bildern dieser Größe, kommt es dorthin. Sonst gilt die Tabelle FALLBACK;
@@ -36,12 +37,13 @@ from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 API = "https://api.appstoreconnect.apple.com"
 
-FOLDERS = ["framed", "framed-6.3", "framed-duo", "framed-duo-aussen", "watch"]
+FOLDERS = ["framed", "framed-6.3", "framed-duo", "framed-duo-aussen", "framed-ipad", "watch"]
 
 # Fächer für Größen, die in der Version noch kein Fach haben (Namen aus der API von App Store Connect).
 FALLBACK = {
     (1320, 2868): "APP_IPHONE_67",
     (1206, 2622): "APP_IPHONE_61",
+    (2064, 2752): "APP_IPAD_PRO_3GEN_129",
     (410, 502): "APP_WATCH_ULTRA",
 }
 
