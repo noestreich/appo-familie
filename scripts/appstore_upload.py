@@ -59,6 +59,10 @@ def b64url(data):
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
+class RetryableError(Exception):
+    """Überlastung oder Serverfehler bei App Store Connect – lohnt einen neuen Versuch."""
+
+
 class Connect:
     def __init__(self, key_id, issuer_id, key_p8):
         self.key_id = key_id
@@ -75,6 +79,20 @@ class Connect:
         return f"{signing_input}.{b64url(r.to_bytes(32, 'big') + s.to_bytes(32, 'big'))}"
 
     def call(self, method, path, body=None):
+        # App Store Connect antwortet manchmal minutenlang nicht (Kaufo, 24. Oktober: Bestätigen eines Bilds
+        # nach 60 Sekunden abgebrochen, das Fach blieb halb gefüllt). Abfragen, Bestätigen und Löschen lassen
+        # sich gefahrlos wiederholen; Anlegen (POST) nicht, sonst entstünden doppelte Bilder.
+        attempts = 1 if method == "POST" else 4
+        for attempt in range(1, attempts + 1):
+            try:
+                return self._send(method, path, body)
+            except (TimeoutError, urllib.error.URLError, RetryableError) as error:
+                if isinstance(error, urllib.error.HTTPError) or attempt == attempts:
+                    raise
+                print(f"::warning::{method} {path}: {error} – neuer Versuch ({attempt + 1}/{attempts})")
+                time.sleep(10 * attempt)
+
+    def _send(self, method, path, body):
         url = path if path.startswith("http") else API + path
         data = json.dumps(body).encode() if body is not None else None
         request = urllib.request.Request(url, data=data, method=method)
@@ -82,10 +100,12 @@ class Connect:
         if data is not None:
             request.add_header("Content-Type", "application/json")
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            with urllib.request.urlopen(request, timeout=180) as response:
                 raw = response.read()
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
+            if error.code == 429 or error.code >= 500:
+                raise RetryableError(f"HTTP {error.code}") from None
             text = error.read().decode(errors="replace")
             try:
                 details = "; ".join(e.get("detail") or e.get("title", "") for e in json.loads(text).get("errors", []))
@@ -189,7 +209,7 @@ def upload(connect, set_id, path):
         request = urllib.request.Request(operation["url"], data=chunk, method=operation["method"])
         for header in operation.get("requestHeaders", []):
             request.add_header(header["name"], header["value"])
-        with urllib.request.urlopen(request, timeout=120):
+        with urllib.request.urlopen(request, timeout=300):
             pass
     connect.call("PATCH", f"/v1/appScreenshots/{shot_id}", {"data": {
         "type": "appScreenshots", "id": shot_id,
