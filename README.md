@@ -121,7 +121,7 @@ jobs:
     secrets: inherit
 ```
 
-Weitere Angaben: `warmup-scene` (Standard `today`), `warmup-seconds` (Standard 60), `app-files` (Dateien aus dem Repo in den Datencontainer der App, eine Zeile `<pfad im repo> <pfad im container>`, z. B. `docs/testdata/einkaufszettel.jpg Documents/demo-note.jpg`), `iphone-types`, `location` (leer = keiner), `output-dir` (Standard `docs/screenshots`), `max-size` (Standard 1100), `commit`.
+Weitere Angaben: `warmup-scene` (Standard `today`), `warmup-seconds` (Standard 60), `app-files` (Dateien aus dem Repo in den Datencontainer der App, eine Zeile `<pfad im repo> <pfad im container>`, z. B. `docs/testdata/einkaufszettel.jpg Documents/demo-note.jpg`), `iphone-types`, `location` (leer = keiner), `output-dir` (Standard `docs/screenshots`), `max-size` (Standard 1100), `commit`, `ipad-scenes` (Szenen im iPad mit 13 Zoll, leer = keine; nur für Apps mit `TARGETED_DEVICE_FAMILY: "1,2"`) und `ipad-types` (Gerätetypen, die zuerst probiert werden; sonst das neueste iPad Pro mit 13 Zoll).
 
 ### App-Store-Bilder (`.github/workflows/appstore.yml`)
 
@@ -160,7 +160,7 @@ jobs:
     secrets: inherit
 ```
 
-`warmup-scene`, `warmup-seconds`, `app-files`, `iphone-types` und `location` wie bei den Screenshots. Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
+`warmup-scene`, `warmup-seconds`, `app-files`, `iphone-types` und `location` wie bei den Screenshots. Mit `ipad-scenes` (und optional `ipad-types`) kommen Bilder vom iPad mit 13 Zoll (2064 × 2752) dazu – Pflicht, sobald die App aufs iPad kommt. Ergebnis in `docs/appstore/raw/`, `raw-duo/`, `raw-duo-aussen/`, `raw-ipad/` und `watch/`. Ersetzt wird nur, was der Lauf neu aufgenommen hat. Watch-Szenen: `<sekunden> <dateiname> [Startargumente nach -demo]`.
 
 #### Gestalten und hochladen (`.github/workflows/appstore-upload.yml`)
 

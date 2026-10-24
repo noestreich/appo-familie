@@ -6,6 +6,7 @@ Liest Farben und Überschriften aus der Konfiguration der App und gestaltet, was
   raw/             → framed/ (1320 × 2868, iPhone 6,9") und framed-6.3/ (1206 × 2622, iPhone 6,3")
   raw-duo/         → framed-duo/ (2853 × 2007 quer bzw. 2007 × 2853 hochkant, je nach Rohbild)
   raw-duo-aussen/  → framed-duo-aussen/ (1398 × 2034)
+  raw-ipad/        → framed-ipad/ (2064 × 2752 hochkant bzw. 2752 × 2064 quer, iPad 13 Zoll)
 
 Bilder, deren Name auf „dunkel“ endet, bekommen den dunklen Hintergrund.
 
@@ -15,8 +16,10 @@ frames.json (Farben als Hex, Überschriften als [Titel, Untertitel] je Dateiname
                "accent": "2A3FD6", "partner": "FF6B5B", "dark": "111324"},
     "captions":           {"01-heute": ["Jeder Tag eine Seite", "Tippen, fotografieren oder diktieren."]},
     "duo_captions":       {"01-doppelseite": ["…", "…"]},
-    "duo_outer_captions": {"01-aussen": ["…", "…"]}
+    "duo_outer_captions": {"01-aussen": ["…", "…"]},
+    "ipad_captions":      {"01-ipad": ["…", "…"]}
   }
+Ohne "ipad_captions" nimmt das iPad die Überschriften aus "captions" (gleicher Dateiname).
 Fehlende Farben nimmt das Skript aus der Standard-Farbwelt (Ultramarin & Koralle).
 """
 import argparse
@@ -34,6 +37,8 @@ SMALL = (1206, 2622)
 DUO = (2007, 2853)
 # iPhone Duo, Außendisplay
 DUO_OUTER = (1398, 2034)
+# iPad 13 Zoll – Pflichtfach, sobald die App aufs iPad kommt
+IPAD = (2064, 2752)
 
 COLORS = {
     "background": "F3F4FC",
@@ -198,7 +203,7 @@ def frame_folder(raw, out, captions, colors, size_for, corner, label, small=None
 def main():
     parser = argparse.ArgumentParser(description="App-Store-Bilder der App-Familie gestalten")
     parser.add_argument("--config", default="docs/appstore/frames.json")
-    parser.add_argument("--root", default="docs/appstore", help="Ordner mit raw/, raw-duo/, raw-duo-aussen/")
+    parser.add_argument("--root", default="docs/appstore", help="Ordner mit raw/, raw-duo/, raw-duo-aussen/, raw-ipad/")
     args = parser.parse_args()
 
     config = json.loads(Path(args.config).read_text(encoding="utf-8"))
@@ -211,6 +216,8 @@ def main():
                  lambda shot: DUO if shot.height >= shot.width else (DUO[1], DUO[0]), 0.035, "Duo ")
     frame_folder(root / "raw-duo-aussen", root / "framed-duo-aussen", config.get("duo_outer_captions", {}), colors,
                  lambda shot: DUO_OUTER, 0.09, "Duo außen ")
+    frame_folder(root / "raw-ipad", root / "framed-ipad", config.get("ipad_captions", config.get("captions", {})), colors,
+                 lambda shot: IPAD if shot.height >= shot.width else (IPAD[1], IPAD[0]), 0.035, "iPad ")
 
 
 if __name__ == "__main__":
