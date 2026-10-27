@@ -402,7 +402,7 @@ jobs:
           # Deshalb bis zu drei Versuche, dazwischen die App neu starten; ein fehlendes Bild hält die anderen nicht auf.
           while read -r secs name rest <&3; do
             case "$secs" in ""|\#*) continue;; esac
-            for attempt in 1 2 3; do
+            for _ in 1 2 3; do
               xcrun simctl terminate "$WATCH" "$WATCH_BUNDLE" 2>/dev/null || true
               # shellcheck disable=SC2086
               xcrun simctl launch "$WATCH" "$WATCH_BUNDLE" -demo $rest < /dev/null
@@ -451,4 +451,9 @@ jobs:
           replace watchshots "$ROOT/watch"
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "App-Store-Screenshots aktualisiert [skip ci]"
-          git push origin HEAD:"$GITHUB_REF_NAME"
+          # Läuft gleichzeitig ein anderer Bild-Workflow, ist main inzwischen weiter: neu aufsetzen und noch mal.
+          for _ in 1 2 3; do
+            git pull --rebase origin "$GITHUB_REF_NAME" && git push origin HEAD:"$GITHUB_REF_NAME" && exit 0
+            sleep 10
+          done
+          exit 1
