@@ -401,7 +401,7 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Screenshots aktualisiert [skip ci]"
           # Läuft gleichzeitig ein anderer Bild-Workflow, ist main inzwischen weiter: neu aufsetzen und noch mal.
-          for attempt in 1 2 3; do
+          for _ in 1 2 3; do
             git pull --rebase origin "$GITHUB_REF_NAME" && git push origin HEAD:"$GITHUB_REF_NAME" && exit 0
             sleep 10
           done
