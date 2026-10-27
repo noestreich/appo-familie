@@ -56,7 +56,7 @@ extension AppTheme {
 - An der Wurzel (App und Teilen-Erweiterung) `.environment(\.theme, theme)` und `.environment(\.typeface, typeface)` setzen. Gelesen wird aus der App Group der App (`AppTheme.storageKey`, `Typeface.storageKey`), damit Widget und Erweiterungen mitlesen.
 - Einstellungen: `ForEach(AppTheme.allCases)` – in allen Apps dieselbe Reihenfolge (Tomatenrot, Himbeere, Ultramarin, Kräutergrün, Aubergine). Die eigene Farbwelt rückt nicht nach vorn.
 - App-Icon: `theme.appIconName(standard: .standard)` ergibt `AppIcon-<farbwelt>` (Kaufo hat eigene Namen).
-- Blob mit Fächer: `BlobMenu(isExpanded:items:…, onHoldStart:onHoldEnd:)`, die Einträge als `FanItem(title:symbol:action:)`. Was Halten tut und die VoiceOver-Texte (`title`, `holdTitle`, `holdHint`, `stopTitle`, `holdsWhileBusy`) sind Angaben der App. Wer den Blob selbst anordnet, nimmt `BlobFan` und `BlobButton`.
+- Blob mit Fächer: `BlobMenu(isExpanded:items:…, onHoldStart:onHoldEnd:)`, die Einträge als `FanItem(title:symbol:action:)`. Was Halten tut und die VoiceOver-Texte (`title`, `holdTitle`, `holdHint`, `stopTitle`, `holdsWhileBusy`) sind Angaben der App. Wer den Blob selbst anordnet, nimmt `BlobFan` und `BlobButton`; steht der Blob links, `BlobFan(items:alignment: .leading)`.
 - Logo: `BlobLogo(size:symbol:)` mit `.checkmark` (Kaufo), `.document` (Scanno), `.pencil` (Schreibo) oder einem SF-Symbol-Namen.
 - Banner: `BannerView(banner:onTap:)`, `Banner(text:isWarning:symbol:showsDetail:actionTitle:action:)`.
 - Statistik: `StatCard(title:symbol:) { … }`, `StatTile(value:label:)`, `RankedBars(rows:color:showsShare:format:)` mit `RankedBars.Row`.

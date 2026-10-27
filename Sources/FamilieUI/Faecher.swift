@@ -48,18 +48,20 @@ struct FanButton: View {
 }
 
 /// Nur die Kapseln, die sich beim Tippen auf den Blob auffächern – wenn die App den Blob selbst anordnet
-/// (Schreibo). Sonst `BlobMenu`.
+/// (Schreibo). Sonst `BlobMenu`. `alignment` ist `.leading`, wenn der Blob links steht.
 public struct BlobFan: View {
     let items: [FanItem]
+    let alignment: HorizontalAlignment
     let onSelect: () -> Void
 
-    public init(items: [FanItem], onSelect: @escaping () -> Void) {
+    public init(items: [FanItem], alignment: HorizontalAlignment = .trailing, onSelect: @escaping () -> Void) {
         self.items = items
+        self.alignment = alignment
         self.onSelect = onSelect
     }
 
     public var body: some View {
-        VStack(alignment: .trailing, spacing: 12) {
+        VStack(alignment: alignment, spacing: 12) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 FanButton(item: item, step: items.count - 1 - index, onSelect: onSelect)
             }
