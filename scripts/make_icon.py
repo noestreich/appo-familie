@@ -3,7 +3,7 @@
 Aufruf im Ordner der App:
   python3 <appo-familie>/scripts/make_icon.py <ausgabe.png> <akzent-hex> <partner-hex> <hintergrund-hex> <zeichen>
 
-Zeichen: "haken" (Kaufo), "blatt" (Scanno), "stift" (Schreibo). Neue Apps bekommen hier ein neues Zeichen:
+Zeichen: "haken" (Kaufo), "blatt" (Scanno), "stift" (Schreibo), "spirale" (Malo). Neue Apps bekommen hier ein neues Zeichen:
 ein einziges, kräftiges Symbol, keine dünnen Linien (DESIGN.md, „Der Blob“).
 Hintergrund hell: Creme FBF4E6; dunkel: die dunkle Fläche der Farbwelt mit den aufgehellten Farben, z. B.
   python3 make_icon.py AppIcon.png      2A3FD6 FF6B5B FBF4E6 stift
@@ -116,6 +116,22 @@ def draw_pencil(draw, s, fill):
     draw.polygon(rounded_path([point(length - cap, -half), point(length, -half), point(length, half), point(length - cap, half)], s * 0.03), fill=fill)
 
 
+def draw_spiral(draw, s, fill):
+    """Kräftige Spirale mit runden Enden – wie ein Kind sie mit dem Finger malt.
+    Strichstärke etwa wie Kaufos Haken, Abstand der Windungen deutlich größer als der Strich."""
+    width = s * 0.07
+    cx, cy = s * 0.5, s * 0.515
+    pitch = s * 0.125 / (2 * math.pi)   # Radius wächst je Umdrehung um 0,125 · Kantenlänge
+    start, end = 0.35 * math.pi, 3.05 * math.pi
+    steps = 400
+    for i in range(steps + 1):
+        theta = start + (end - start) * i / steps
+        r = pitch * theta
+        x, y = cx + r * math.cos(theta), cy - r * math.sin(theta)
+        # Viele überlappende Kreise statt einer Linie: gleichmäßige Breite auch in den Bögen.
+        draw.ellipse((x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=fill)
+
+
 def main():
     out = sys.argv[1]
     accent = hex_rgb(sys.argv[2] if len(sys.argv) > 2 else "D63862")
@@ -168,6 +184,8 @@ def main():
             draw.ellipse((x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=white)
     elif glyph == "blatt":
         draw_page(draw, s, white, img.getpixel((int(s * 0.5), int(s * 0.52))))
+    elif glyph == "spirale":
+        draw_spiral(draw, s, white)
     else:
         draw_pencil(draw, s, white)
 

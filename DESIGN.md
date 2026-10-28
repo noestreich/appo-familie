@@ -77,7 +77,7 @@ r = 0.88 · halbe Kantenlänge · (1 + wobble · offset)
 - Hauptknopf unten rechts, 80 pt. Schreibo erprobt die Einstellung „Knopf links“ für die linke Hand (Blob und Fächer unten links, `BlobFan(alignment: .leading)`); bewährt sie sich, kommt sie in alle Apps. **Tippen** öffnet ein Fächer-Menü (Kapseln mit Symbol und Text, gestaffelt animiert), **Halten** startet direkt die Hauptaktion (bei Kaufo: Diktat). Während des Zuhörens schwingt der Blob mit der Lautstärke.
 - Was Halten tut und die VoiceOver-Texte gibt die App dem `BlobButton` bzw. `BlobMenu` mit.
 - Als Logo (`BlobLogo`) mit dem weißen Zeichen der App (`BlobSymbol`: `.checkmark`, `.document`, `.pencil`) in leeren Zuständen, Ladeanzeigen und im Onboarding.
-- App-Icon: derselbe Blob auf Creme (FBF4E6) in der Standard-Farbwelt der App, darin ein einziges, kräftiges weißes Zeichen (Kaufo: Haken, Scanno: gefülltes Blatt mit Textzeilen, Schreibo: Stift). Keine dünnen Linien, Rahmen oder Kleinteile. Je Farbwelt ein eigenes Icon mit heller und dunkler Variante (dunkel: aufgehellte Farben auf der dunklen Fläche der Farbwelt), erzeugt per `scripts/make_icon.py --all`. Das Icon wechselt mit der gewählten Farbwelt (`setAlternateIconName`).
+- App-Icon: derselbe Blob auf Creme (FBF4E6) in der Standard-Farbwelt der App, darin ein einziges, kräftiges weißes Zeichen (Kaufo: Haken, Scanno: gefülltes Blatt mit Textzeilen, Schreibo: Stift, Malo (im Aufbau): Spirale). Keine dünnen Linien, Rahmen oder Kleinteile. Je Farbwelt ein eigenes Icon mit heller und dunkler Variante (dunkel: aufgehellte Farben auf der dunklen Fläche der Farbwelt), erzeugt per `scripts/make_icon.py --all`. Das Icon wechselt mit der gewählten Farbwelt (`setAlternateIconName`).
 
 ## Muster, die jede App mitbringt
 
