@@ -1,0 +1,75 @@
+name: App-Store-Version vorbereiten (Familie)
+
+# Wiederverwendbar: legt die Version aus project.yml (MARKETING_VERSION) in App Store Connect an, ordnet den
+# Build (CURRENT_PROJECT_VERSION) zu und trägt die Neuerungen aus docs/appstore/texte.md ein
+# (scripts/appstore_version.py). Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist,
+# legt Apple keine neue an – der Lauf sagt das und lässt sich nach der Freigabe noch einmal starten.
+# Aufruf in der App (Workflow „App-Store-Version vorbereiten“, nur per Hand):
+#   jobs:
+#     version:
+#       uses: noestreich/appo-familie/.github/workflows/appstore-version.yml@v1
+#       with:
+#         bundle-id: de.ncls.kaufo
+#       secrets: inherit
+on:
+  workflow_call:
+    inputs:
+      bundle-id:
+        type: string
+        required: true
+      texts:
+        description: Datei mit den Neuerungen
+        type: string
+        default: docs/appstore/texte.md
+      wait:
+        description: Minuten warten, bis der Build verarbeitet ist
+        type: string
+        default: "20"
+      dry-run:
+        description: Nur zeigen, was passieren würde
+        type: boolean
+        default: false
+      familie-ref:
+        description: Stand von appo-familie für die Skripte
+        type: string
+        default: v1
+    secrets:
+      ASC_KEY_ID:
+        required: true
+      ASC_ISSUER_ID:
+        required: true
+      ASC_KEY_P8:
+        required: true
+      FAMILIE_TOKEN:
+        description: Nur nötig, solange appo-familie privat ist
+        required: false
+
+jobs:
+  version:
+    name: Version, Build und Neuerungen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: noestreich/appo-familie
+          ref: ${{ inputs.familie-ref }}
+          path: .familie
+          token: ${{ secrets.FAMILIE_TOKEN || github.token }}
+      - name: Python-Paket
+        run: pip install --quiet cryptography
+      - name: In App Store Connect vorbereiten
+        env:
+          BUNDLE: ${{ inputs.bundle-id }}
+          TEXTS: ${{ inputs.texts }}
+          WAIT: ${{ inputs.wait }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          version=$(awk -F'"' '/^ *MARKETING_VERSION:/ { print $2; exit }' project.yml)
+          build=$(awk -F'"' '/^ *CURRENT_PROJECT_VERSION:/ { print $2; exit }' project.yml)
+          args=(--bundle-id "$BUNDLE" --version "$version" --build "$build" --texts "$TEXTS" --wait "$WAIT")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 .familie/scripts/appstore_version.py "${args[@]}"
