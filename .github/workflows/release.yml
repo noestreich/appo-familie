@@ -26,6 +26,10 @@ on:
         description: Apple-Team; leer = DEVELOPMENT_TEAM aus dem Projekt
         type: string
         default: ""
+      familie-ref:
+        description: Stand von appo-familie für die Skripte
+        type: string
+        default: v1
     secrets:
       ASC_KEY_ID:
         description: Key-ID des App-Store-Connect-API-Schlüssels
@@ -55,6 +59,12 @@ jobs:
           if [ -n "$TOKEN" ]; then
             git config --global url."https://x-access-token:${TOKEN}@github.com/noestreich/appo-familie".insteadOf "https://github.com/noestreich/appo-familie"
           fi
+      - uses: actions/checkout@v4
+        with:
+          repository: noestreich/appo-familie
+          ref: ${{ inputs.familie-ref }}
+          path: .familie
+          token: ${{ secrets.FAMILIE_TOKEN || github.token }}
       - name: XcodeGen
         run: brew install xcodegen && xcodegen generate
       - name: API-Schlüssel ablegen
@@ -79,6 +89,19 @@ jobs:
           [ -n "$TEAM" ] || { echo "::error::Kein Team: DEVELOPMENT_TEAM in project.yml oder team-id angeben"; exit 1; }
           echo "Version $version ($build), Team $TEAM"
           { echo "APP_VERSION=$version"; echo "APP_BUILD=$build"; echo "TEAM_ID=$TEAM"; } >> "$GITHUB_ENV"
+      # Xcode legt beim Archivieren auf dem frischen Runner ein neues Entwicklungszertifikat an. Der Schlüssel
+      # ist danach weg, und nach rund zehn Läufen meldet Apple „maximum number of certificates“. Deshalb
+      # merken, was vorher da war, und am Ende zurückziehen, was dieser Lauf angelegt hat.
+      - name: Zertifikate merken
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          python3 -m pip install --quiet --user cryptography 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages cryptography
+          python3 .familie/scripts/asc_certificates.py remember "$RUNNER_TEMP/certificates.txt"
       - name: Archivieren
         env:
           KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -142,6 +165,17 @@ jobs:
             tail -40 "$log"
             echo "::endgroup::"
           done
+      - name: Neue Entwicklungszertifikate zurückziehen
+        if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -f "$RUNNER_TEMP/certificates.txt" ]; then
+            python3 .familie/scripts/asc_certificates.py cleanup "$RUNNER_TEMP/certificates.txt" \
+              || echo "::warning::Neue Entwicklungszertifikate ließen sich nicht zurückziehen – bei maximum number of certificates im Apple-Developer-Konto von Hand widerrufen"
+          fi
       - name: Schlüssel entfernen
         if: always()
         run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
