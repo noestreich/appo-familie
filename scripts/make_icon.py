@@ -3,7 +3,7 @@
 Aufruf im Ordner der App:
   python3 <appo-familie>/scripts/make_icon.py <ausgabe.png> <akzent-hex> <partner-hex> <hintergrund-hex> <zeichen>
 
-Zeichen: "haken" (Kaufo), "blatt" (Scanno), "stift" (Schreibo), "spirale" (Malo). Neue Apps bekommen hier ein neues Zeichen:
+Zeichen: "haken" (Kaufo), "blatt" (Scanno), "stift" (Schreibo), "pinsel" (Malo). Neue Apps bekommen hier ein neues Zeichen:
 ein einziges, kräftiges Symbol, keine dünnen Linien (DESIGN.md, „Der Blob“).
 Hintergrund hell: Creme FBF4E6; dunkel: die dunkle Fläche der Farbwelt mit den aufgehellten Farben, z. B.
   python3 make_icon.py AppIcon.png      2A3FD6 FF6B5B FBF4E6 stift
@@ -116,20 +116,38 @@ def draw_pencil(draw, s, fill):
     draw.polygon(rounded_path([point(length - cap, -half), point(length, -half), point(length, half), point(length - cap, half)], s * 0.03), fill=fill)
 
 
-def draw_spiral(draw, s, fill):
-    """Kräftige Spirale mit runden Enden – wie ein Kind sie mit dem Finger malt.
-    Strichstärke etwa wie Kaufos Haken, Abstand der Windungen deutlich größer als der Strich."""
-    width = s * 0.07
+def draw_brush(draw, s, fill):
+    """Pinsel schräg von links unten (Spitze) nach rechts oben (Stiel): tropfenförmige Spitze, Zwinge, Stiel.
+    Die Lücken zwischen den Teilen zeigen den Blob, wie beim Stift von Schreibo."""
+    length = s * 0.50
+    axis = (1 / math.sqrt(2), -1 / math.sqrt(2))   # von der Spitze zum Stielende (nach rechts oben)
+    normal = (1 / math.sqrt(2), 1 / math.sqrt(2))
     cx, cy = s * 0.5, s * 0.515
-    pitch = s * 0.125 / (2 * math.pi)   # Radius wächst je Umdrehung um 0,125 · Kantenlänge
-    start, end = 0.35 * math.pi, 3.05 * math.pi
-    steps = 400
-    for i in range(steps + 1):
-        theta = start + (end - start) * i / steps
-        r = pitch * theta
-        x, y = cx + r * math.cos(theta), cy - r * math.sin(theta)
-        # Viele überlappende Kreise statt einer Linie: gleichmäßige Breite auch in den Bögen.
-        draw.ellipse((x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=fill)
+    ox, oy = cx - axis[0] * length / 2, cy - axis[1] * length / 2
+
+    def point(u, v):
+        return (ox + axis[0] * u + normal[0] * v, oy + axis[1] * u + normal[1] * v)
+
+    # Spitze: Tropfen, vorn spitz, hinten rund und breit wie die Zwinge
+    tip, tip_half = s * 0.19, s * 0.07
+    outline = []
+    for i in range(41):
+        t = i / 40                                  # 0 = Spitze, 1 = hinteres Ende
+        width = tip_half * math.sin(math.pi / 2 * min(1, t / 0.7)) ** 1.4
+        outline.append((t * tip, width))
+    left = [point(u, -w) for u, w in outline]
+    right = [point(u, w) for u, w in reversed(outline)]
+    draw.polygon(rounded_path(left + right, s * 0.01), fill=fill)
+    # Zwinge
+    gap = s * 0.022
+    ferrule_start, ferrule_end, ferrule_half = tip + gap, tip + gap + s * 0.07, s * 0.06
+    draw.polygon(rounded_path([point(ferrule_start, -ferrule_half), point(ferrule_end, -ferrule_half),
+                               point(ferrule_end, ferrule_half), point(ferrule_start, ferrule_half)], s * 0.012), fill=fill)
+    # Stiel: verjüngt sich zum Ende, rund abgeschlossen
+    handle_start = ferrule_end + gap
+    handle_half_start, handle_half_end = s * 0.042, s * 0.028
+    draw.polygon(rounded_path([point(handle_start, -handle_half_start), point(length, -handle_half_end),
+                               point(length, handle_half_end), point(handle_start, handle_half_start)], s * 0.025), fill=fill)
 
 
 def main():
@@ -184,8 +202,8 @@ def main():
             draw.ellipse((x - width / 2, y - width / 2, x + width / 2, y + width / 2), fill=white)
     elif glyph == "blatt":
         draw_page(draw, s, white, img.getpixel((int(s * 0.5), int(s * 0.52))))
-    elif glyph == "spirale":
-        draw_spiral(draw, s, white)
+    elif glyph == "pinsel":
+        draw_brush(draw, s, white)
     else:
         draw_pencil(draw, s, white)
 
