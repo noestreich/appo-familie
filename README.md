@@ -12,6 +12,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
 | App-Store-Bilder (6,9", Duo innen und außen, Watch) | `.github/workflows/appstore.yml` | `uses: …@v1` |
 | Veröffentlichen: archivieren, signieren, zu App Store Connect hochladen | `.github/workflows/release.yml` | `uses: …@v1` |
+| Nächste Version in App Store Connect anlegen, Build zuordnen, Neuerungen eintragen | `.github/workflows/appstore-version.yml`, `scripts/appstore_version.py` | `uses: …@v1`, nach Veröffentlichen |
 | App-Store-Bilder gestalten und zu App Store Connect hochladen | `.github/workflows/appstore-upload.yml`, `scripts/appstore_upload.py` | zweiter Job im Workflow App-Store-Screenshots |
 | App-Icon | `scripts/make_icon.py` | lokal aufrufen |
 | App-Store-Rahmen | `scripts/appstore_frames.py` + `docs/appstore/frames.json` der App | lokal aufrufen |
@@ -221,6 +222,25 @@ jobs:
 ```
 
 `team-id` ist optional (leer = `DEVELOPMENT_TEAM` aus dem Projekt).
+
+### App-Store-Version vorbereiten (`.github/workflows/appstore-version.yml`)
+
+Nach `Veröffentlichen`: legt die Version aus `project.yml` (`MARKETING_VERSION`) in App Store Connect an, ordnet den Build (`CURRENT_PROJECT_VERSION`) zu – ist er noch in Verarbeitung, wartet der Lauf bis zu 20 Minuten – und trägt die Neuerungen ein. Die stehen in `docs/appstore/texte.md` unter `## Neuerungen in dieser Version (1.1.1, …)` im ersten Codeblock; passt die Version in der Überschrift nicht, bricht der Lauf ab. Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist, legt Apple keine neue an; dann nach der Freigabe noch einmal starten. Gleiche Secrets wie beim Veröffentlichen.
+
+```yaml
+name: App-Store-Version vorbereiten
+# Nur per Hand starten: Version anlegen, Build zuordnen, Neuerungen eintragen (1–20 Minuten).
+on:
+  workflow_dispatch:
+jobs:
+  version:
+    uses: noestreich/appo-familie/.github/workflows/appstore-version.yml@v1
+    with:
+      bundle-id: de.ncls.kaufo
+    secrets: inherit
+```
+
+Lokal: `ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_P8="$(cat AuthKey.p8)" python3 ../appo-familie/scripts/appstore_version.py --bundle-id de.ncls.kaufo --version 1.1.1 --build 15 --dry-run`.
 
 ### Rahmen und Icon (lokal)
 
