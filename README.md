@@ -223,6 +223,8 @@ jobs:
 
 `team-id` ist optional (leer = `DEVELOPMENT_TEAM` aus dem Projekt).
 
+Beim Archivieren legt Xcode auf jedem frischen Runner ein neues Entwicklungszertifikat („Apple Development“) an, dessen Schlüssel mit dem Runner verschwindet. Nach rund zehn Läufen meldet Apple „Your account has reached the maximum number of certificates“. Deshalb merkt sich der Lauf vorher die vorhandenen Entwicklungszertifikate und zieht am Ende alle neuen wieder zurück (`scripts/asc_certificates.py`); eigene Zertifikate am Mac bleiben. Ist das Limit schon erreicht, die alten CI-Zertifikate einmal von Hand im Apple-Developer-Konto unter Certificates widerrufen.
+
 ### App-Store-Version vorbereiten (`.github/workflows/appstore-version.yml`)
 
 Nach `Veröffentlichen`: legt die Version aus `project.yml` (`MARKETING_VERSION`) in App Store Connect an, ordnet den Build (`CURRENT_PROJECT_VERSION`) zu – ist er noch in Verarbeitung, wartet der Lauf bis zu 20 Minuten – und trägt die Neuerungen ein. Die stehen in `docs/appstore/texte.md` unter `## Neuerungen in dieser Version (1.1.1, …)` im ersten Codeblock; passt die Version in der Überschrift nicht, bricht der Lauf ab. Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist, legt Apple keine neue an; dann nach der Freigabe noch einmal starten. Gleiche Secrets wie beim Veröffentlichen.
