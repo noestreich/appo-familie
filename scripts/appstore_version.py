@@ -6,8 +6,9 @@ Aufruf im Ordner der App (Schlüssel aus der Umgebung: ASC_KEY_ID, ASC_ISSUER_ID
 
 Was passiert:
   1. Die App suchen und ihre Versionen zeigen.
-  2. Die Version aus --version nehmen oder anlegen. Apple legt keine neue Version an, solange eine andere
-     noch in Prüfung ist oder auf Freigabe wartet – dann bricht das Skript mit dieser Meldung ab.
+  2. Die Version aus --version nehmen oder anlegen. Liegt noch eine andere Version unverändert bereit (nicht
+     eingereicht, etwa 1.2 wenn jetzt 1.2.1 kommt), wird sie umbenannt – Apple erlaubt nur eine offene Version.
+     Ist eine andere noch in Prüfung oder wartet auf Freigabe, bricht das Skript mit dieser Meldung ab.
   3. Den Build --build dieser Version suchen. Ist er noch in Verarbeitung, bis zu --wait Minuten warten.
   4. Den Build der Version zuordnen.
   5. Den Text unter „## Neuerungen in dieser Version (…)“ aus --texts als „Neuerungen“ in der Sprache der App
@@ -59,6 +60,18 @@ def find_or_create_version(connect, app_id, version_string, dry_run):
             if state not in EDITABLE and version["attributes"].get("appStoreState") not in EDITABLE:
                 fail(f"Version {version_string} gibt es schon und sie lässt sich nicht mehr ändern ({state})")
             print(f"Version {version_string} ist schon angelegt ({state})")
+            return version["id"]
+    # Eine noch nicht eingereichte Version (etwa 1.2, übersprungen zugunsten von 1.2.1) wird umbenannt.
+    for version in versions:
+        if state_of(version) in EDITABLE or version["attributes"].get("appStoreState") in EDITABLE:
+            old = version["attributes"]["versionString"]
+            if dry_run:
+                print(f"Würde die nicht eingereichte Version {old} in {version_string} umbenennen")
+                return version["id"]
+            connect.call("PATCH", f"/v1/appStoreVersions/{version['id']}", {"data": {
+                "type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": version_string},
+            }})
+            print(f"Version {old} war noch nicht eingereicht – umbenannt in {version_string}")
             return version["id"]
     if dry_run:
         print(f"Würde Version {version_string} anlegen")

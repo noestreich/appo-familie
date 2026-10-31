@@ -227,7 +227,7 @@ Beim Archivieren legt Xcode auf jedem frischen Runner ein neues Entwicklungszert
 
 ### App-Store-Version vorbereiten (`.github/workflows/appstore-version.yml`)
 
-Nach `Veröffentlichen`: legt die Version aus `project.yml` (`MARKETING_VERSION`) in App Store Connect an, ordnet den Build (`CURRENT_PROJECT_VERSION`) zu – ist er noch in Verarbeitung, wartet der Lauf bis zu 20 Minuten – und trägt die Neuerungen ein. Die stehen in `docs/appstore/texte.md` unter `## Neuerungen in dieser Version (1.1.1, …)` im ersten Codeblock; passt die Version in der Überschrift nicht, bricht der Lauf ab. Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist, legt Apple keine neue an; dann nach der Freigabe noch einmal starten. Gleiche Secrets wie beim Veröffentlichen.
+Nach `Veröffentlichen`: legt die Version aus `project.yml` (`MARKETING_VERSION`) in App Store Connect an, ordnet den Build (`CURRENT_PROJECT_VERSION`) zu – ist er noch in Verarbeitung, wartet der Lauf bis zu 20 Minuten – und trägt die Neuerungen ein. Die stehen in `docs/appstore/texte.md` unter `## Neuerungen in dieser Version (1.1.1, …)` im ersten Codeblock; passt die Version in der Überschrift nicht, bricht der Lauf ab. Eingereicht wird nicht. Liegt noch eine andere Version unverändert bereit (nicht eingereicht), benennt der Lauf sie um, statt eine zweite anzulegen – so lässt sich eine Version überspringen (1.2 → 1.2.1). Solange eine andere Version noch in Prüfung ist, legt Apple keine neue an; dann nach der Freigabe noch einmal starten. Gleiche Secrets wie beim Veröffentlichen.
 
 ```yaml
 name: App-Store-Version vorbereiten
