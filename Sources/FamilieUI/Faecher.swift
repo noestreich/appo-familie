@@ -60,8 +60,22 @@ public struct BlobFan: View {
         self.onSelect = onSelect
     }
 
+    /// Viele Einträge, große Schrift oder quer: erst enger zusammenrücken, dann scrollen – nie über den Rand.
     public var body: some View {
-        VStack(alignment: alignment, spacing: 12) {
+        ViewThatFits(in: .vertical) {
+            column(spacing: 12)
+            column(spacing: 6)
+            ScrollView(showsIndicators: false) {
+                column(spacing: 6)
+                    .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .defaultScrollAnchor(.bottom)
+        }
+    }
+
+    private func column(spacing: CGFloat) -> some View {
+        VStack(alignment: alignment, spacing: spacing) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 FanButton(item: item, step: items.count - 1 - index, onSelect: onSelect)
             }
