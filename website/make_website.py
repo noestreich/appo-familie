@@ -11,7 +11,7 @@ Hilfe, Datenschutz, Impressum (DESIGN.md, „Webseite“). Gemeinsames (Impressu
 site.json (Bildpfade relativ zum Ordner der App, Texte mit HTML wie <strong> und <a> sind erlaubt):
   {
     "name": "Kaufo", "titel": "…", "beschreibung": "…", "app_store": "https://apps.apple.com/…",
-    "zeichen": "haken" | "blatt" | "stift",
+    "zeichen": "haken" | "blatt" | "stift" | "pinsel",
     "farben": {"hell": {"surface", "card", "ink", "muted", "accent", "partner"}, "dunkel": {…}},
     "einleitung": "<strong>…</strong> …", "hinweis": "…",
     "kopfbild": {"bild": "docs/appstore/raw/05-liste.png", "alt": "…"},
@@ -60,6 +60,12 @@ GLYPHS = {
               '          <path d="M40.1,54.3 L56.0,38.4 L63.1,45.5 L47.2,61.4 Z"/>\n'
               '          <path d="M58.1,36.3 L62.7,31.7 L69.8,38.8 L65.2,43.4 Z"/>\n'
               '        </g>'),
+    # Malo: Pinsel schräg, Spitze unten links (wie make_icon.py … pinsel)
+    "pinsel": ('<g fill="#fff" transform="translate(50 51) rotate(45) scale(0.95)">\n'
+               '          <path d="M0,26 C-3,22 -7.5,14 -7.5,8 Q-7.5,6 -5.5,6 L5.5,6 Q7.5,6 7.5,8 C7.5,14 3,22 0,26Z"/>\n'
+               '          <rect x="-6.5" y="-3" width="13" height="6.5" rx="1.5"/>\n'
+               '          <path d="M-4.5,-5.5 L4.5,-5.5 L3,-25 Q0,-28 -3,-25Z"/>\n'
+               '        </g>'),
 }
 
 
