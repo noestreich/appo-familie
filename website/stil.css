@@ -19,9 +19,13 @@
   h1, h2, h3, .num { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; letter-spacing: -.01em; }
   a { color: var(--accent); }
   .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
-  nav { display: flex; gap: 20px; justify-content: flex-end; padding: 18px 0; font-size: 15px; flex-wrap: wrap; }
+  nav { display: flex; gap: 12px 20px; justify-content: space-between; align-items: center; padding: 18px 0; font-size: 15px; flex-wrap: wrap; }
+  nav .links { display: flex; gap: 20px; flex-wrap: wrap; }
   nav a { color: var(--muted); text-decoration: none; }
   nav a:hover { color: var(--accent); }
+  /* Zurück zur Startseite ncls.de mit allen Apps */
+  nav .zurueck { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; }
+  nav .zurueck svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; padding: 40px 0 64px; }
   .logo { width: 96px; height: 96px; filter: drop-shadow(0 10px 18px {{logo_schatten}}); }
   h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1.02; margin: 18px 0 14px; font-weight: 800; }
@@ -73,7 +77,8 @@
   @media (max-width: 760px) {
     .hero { grid-template-columns: 1fr; padding-top: 16px; }
     .grid { grid-template-columns: 1fr; }
-    nav { justify-content: flex-start; gap: 14px; }
+    nav { flex-direction: column; align-items: flex-start; }
+    nav .links { gap: 14px; }
     .duo { grid-template-columns: 1fr; }
     .duo-outer { width: 160px; }
   }
