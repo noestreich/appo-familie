@@ -9,7 +9,7 @@ import UIKit
 @MainActor
 public enum QuickActions {
     /// Bekommt den Typ (`UIApplicationShortcutItemType`) und liefert `true`, wenn die App ihn kennt.
-    public static var handler: (String) -> Bool = { _ in false }
+    public static var handler: @MainActor (String) -> Bool = { _ in false }
 
     public static func sceneConfiguration(for session: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         if let item = options.shortcutItem { perform(item.type) }
