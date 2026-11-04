@@ -279,6 +279,7 @@ Was in appo-familie liegt, wird eingebunden, nicht kopiert. Der Rest wird vorers
 | Banner, Fächer-Menü (`Banner`, `BannerView`, `FanItem`, `BlobFan`, `BlobMenu`) | `FamilieUI` (`Banner.swift`, `Faecher.swift`) | erledigt |
 | Statistik-Bausteine (`StatCard`, `StatTile`, `RankedBars`) | `FamilieUI` (`Statistik.swift`) | erledigt |
 | Gerätename für Texte (`Device.name`, `Device.isPad`) | `FamilieUI` (`Geraet.swift`) | erledigt |
+| Quick Actions am App-Symbol (`QuickActions`, `QuickActionSceneDelegate`) | `FamilieUI` (`QuickActions.swift`); Einträge in `UIApplicationShortcutItems` und was sie tun in der App | erledigt (Schreibo, Scanno) |
 | Spracheingabe | Kaufo `App/Services/SpeechInput.swift` | später, eigenes Produkt |
 | Palette und Ladenfarben | Kaufo `Shared/ListColor.swift`, `Shared/StoreBrand.swift` | bleibt in Kaufo |
 | iCloud und Haushalt | Kaufo `App/Services/Sync/` | bleibt je App (Zonen und Datensätze unterscheiden sich) |

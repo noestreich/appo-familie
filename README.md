@@ -6,7 +6,7 @@ Gemeinsame Regeln und Bausteine für die iOS-Apps [Kaufo](https://github.com/noe
 | --- | --- | --- |
 | Gestaltung, Sprache, Grundsätze, Duo-Rezept, App-Store-Stolpersteine | `DESIGN.md` | Verweis im Repo der App |
 | „Weitere Apps von uns“ | Swift-Paket `AppoFamilie`, Produkt `MoreApps` (`Sources/MoreApps`) | Paket-URL, `branch: v1` |
-| Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine, Gerätename (`Device.name`) | Swift-Paket `AppoFamilie`, Produkt `FamilieUI` (`Sources/FamilieUI`) | Paket-URL, `branch: v1` |
+| Farbwelten, Schriften, Blob, Banner, Fächer-Menü, Statistik-Bausteine, Gerätename (`Device.name`), Quick Actions (`QuickActions`) | Swift-Paket `AppoFamilie`, Produkt `FamilieUI` (`Sources/FamilieUI`) | Paket-URL, `branch: v1` |
 | Paket-Tests (Linux) | `.github/workflows/swift-tests.yml` | `uses: …@v1` |
 | iOS-Build mit Xcode 27.1 | `.github/workflows/ios-build.yml` | `uses: …@v1` |
 | Screenshots iPhone und iPhone Duo | `.github/workflows/screenshots.yml` | `uses: …@v1` |
@@ -61,6 +61,7 @@ extension AppTheme {
 - Logo: `BlobLogo(size:symbol:)` mit `.checkmark` (Kaufo), `.document` (Scanno), `.pencil` (Schreibo) oder einem SF-Symbol-Namen.
 - Banner: `BannerView(banner:onTap:)`, `Banner(text:isWarning:symbol:showsDetail:actionTitle:action:)`.
 - Statistik: `StatCard(title:symbol:) { … }`, `StatTile(value:label:)`, `RankedBars(rows:color:showsShare:format:)` mit `RankedBars.Row`.
+- Quick Actions: Einträge in `UIApplicationShortcutItems` (`project.yml`), im `init` der `App` `QuickActions.handler = { type in … }` (liefert `true`, wenn die App den Typ kennt) und im AppDelegate `func application(_:configurationForConnecting:options:)` mit `QuickActions.sceneConfiguration(for:options:)` beantworten.
 
 ### CI (`.github/workflows/ci.yml`)
 
