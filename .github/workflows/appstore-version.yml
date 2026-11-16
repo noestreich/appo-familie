@@ -1,8 +1,9 @@
 name: App-Store-Version vorbereiten (Familie)
 
 # Wiederverwendbar: legt die Version aus project.yml (MARKETING_VERSION) in App Store Connect an, ordnet den
-# Build (CURRENT_PROJECT_VERSION) zu und trägt die Neuerungen aus docs/appstore/texte.md ein
-# (scripts/appstore_version.py). Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist,
+# Build (CURRENT_PROJECT_VERSION) zu und trägt die Neuerungen aus docs/appstore/texte.md ein, dazu Werbetext,
+# Beschreibung und Schlüsselwörter, wo sie sich geändert haben (scripts/appstore_version.py, abschaltbar mit
+# store-texts: false). Eingereicht wird nicht. Solange eine andere Version noch in Prüfung ist,
 # legt Apple keine neue an – der Lauf sagt das und lässt sich nach der Freigabe noch einmal starten.
 # Aufruf in der App (Workflow „App-Store-Version vorbereiten“, nur per Hand):
 #   jobs:
@@ -21,6 +22,10 @@ on:
         description: Datei mit den Neuerungen
         type: string
         default: docs/appstore/texte.md
+      store-texts:
+        description: Auch Werbetext, Beschreibung und Schlüsselwörter aus der Datei eintragen
+        type: boolean
+        default: true
       wait:
         description: Minuten warten, bis der Build verarbeitet ist
         type: string
@@ -64,6 +69,7 @@ jobs:
           TEXTS: ${{ inputs.texts }}
           WAIT: ${{ inputs.wait }}
           DRY_RUN: ${{ inputs.dry-run }}
+          STORE_TEXTS: ${{ inputs.store-texts }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
@@ -72,4 +78,5 @@ jobs:
           build=$(awk -F'"' '/^ *CURRENT_PROJECT_VERSION:/ { print $2; exit }' project.yml)
           args=(--bundle-id "$BUNDLE" --version "$version" --build "$build" --texts "$TEXTS" --wait "$WAIT")
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ "$STORE_TEXTS" = "true" ]; then args+=(--store-texts); fi
           python3 .familie/scripts/appstore_version.py "${args[@]}"
