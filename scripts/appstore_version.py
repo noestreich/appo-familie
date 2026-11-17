@@ -218,8 +218,17 @@ def main():
     build_id = find_build(connect, app["id"], args.version, args.build, 0 if args.dry_run else args.wait)
     if args.dry_run:
         print(f"Würde Build {args.build} zuordnen und die Neuerungen eintragen:\n{text}")
-        if version_id:
-            set_texts(connect, version_id, locale, texts, dry_run=True)
+        compare_id = version_id
+        if compare_id is None:
+            # Die neue Version gibt es noch nicht. App Store Connect übernimmt beim Anlegen die Texte der letzten –
+            # mit ihr vergleichen, damit der Probelauf zeigt, was sich ändern würde.
+            versions = connect.all(f"/v1/apps/{app['id']}/appStoreVersions?filter[platform]=IOS&limit=50")
+            versions.sort(key=lambda v: v["attributes"].get("createdDate") or "", reverse=True)
+            if versions:
+                compare_id = versions[0]["id"]
+                print(f"Vergleich mit Version {versions[0]['attributes']['versionString']}:")
+        if compare_id:
+            set_texts(connect, compare_id, locale, texts, dry_run=True)
         return
     connect.call("PATCH", f"/v1/appStoreVersions/{version_id}/relationships/build", {
         "data": {"type": "builds", "id": build_id},
