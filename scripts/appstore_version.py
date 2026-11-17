@@ -2,7 +2,7 @@
 
 Aufruf im Ordner der App (Schlüssel aus der Umgebung: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8):
   python3 <appo-familie>/scripts/appstore_version.py --bundle-id de.ncls.kaufo --version 1.1.1 --build 15 \
-      [--texts docs/appstore/texte.md] [--wait 20] [--dry-run]
+      [--texts docs/appstore/texte.md] [--store-texts] [--wait 20] [--dry-run]
 
 Was passiert:
   1. Die App suchen und ihre Versionen zeigen.
@@ -13,10 +13,14 @@ Was passiert:
   4. Den Build der Version zuordnen.
   5. Den Text unter „## Neuerungen in dieser Version (…)“ aus --texts als „Neuerungen“ in der Sprache der App
      eintragen (der erste Codeblock nach der Überschrift).
+  6. Mit --store-texts auch Werbetext, Beschreibung und Schlüsselwörter aus --texts eintragen (jeweils der erste
+     Codeblock unter „## Werbetext“, „## Beschreibung“, „## Schlüsselwörter“). Geschrieben wird nur, was sich von
+     App Store Connect unterscheidet; der Lauf nennt jedes Feld. Name und Untertitel bleiben Handarbeit.
 
 Eingereicht wird nicht – das bleibt in App Store Connect. Nur Python 3 und das Paket cryptography.
 """
 import argparse
+import difflib
 import os
 import re
 import sys
@@ -42,6 +46,33 @@ def whats_new(path, version):
     if len(body) > 4000:
         fail(f"{path}: Neuerungen mit {len(body)} Zeichen, App Store Connect nimmt höchstens 4000")
     return body
+
+
+# Abschnitt in texte.md → Feld in App Store Connect, Höchstlänge, Name für die Ausgabe.
+STORE_TEXTS = [
+    ("Werbetext", "promotionalText", 170),
+    ("Beschreibung", "description", 4000),
+    ("Schlüsselwörter", "keywords", 100),
+]
+
+
+def store_texts(path):
+    """Werbetext, Beschreibung und Schlüsselwörter: je der erste Codeblock unter der gleichnamigen Überschrift."""
+    text = Path(path).read_text(encoding="utf-8")
+    result = {}
+    for heading, field, limit in STORE_TEXTS:
+        section = re.search(rf"^## {heading}\b[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+        block = re.search(r"```\n(.*?)\n```", section.group(1), re.S) if section else None
+        if not block:
+            print(f"{path}: kein Abschnitt „## {heading}“ mit Codeblock – {heading} bleibt, wie es ist")
+            continue
+        body = block.group(1).strip()
+        if len(body) > limit:
+            fail(f"{path}: {heading} mit {len(body)} Zeichen, App Store Connect nimmt höchstens {limit}")
+        if field == "keywords" and "\n" in body:
+            fail(f"{path}: Die Schlüsselwörter stehen nicht in einer Zeile")
+        result[field] = body
+    return result
 
 
 def state_of(version):
@@ -116,21 +147,43 @@ def find_build(connect, app_id, version_string, build_number, wait_minutes):
         time.sleep(60)
 
 
-def set_whats_new(connect, version_id, locale, text):
+def set_texts(connect, version_id, locale, texts, dry_run=False):
+    """Trägt die Texte ein – nur Felder, die sich von App Store Connect unterscheiden."""
+    names = {"whatsNew": "Neuerungen", **{field: heading for heading, field, _ in STORE_TEXTS}}
     localizations = connect.all(f"/v1/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=50")
     for item in localizations:
-        if item["attributes"]["locale"] == locale:
+        if item["attributes"]["locale"] != locale:
+            continue
+        changed = {}
+        for field, value in texts.items():
+            current = (item["attributes"].get(field) or "").strip()
+            if current == value:
+                print(f"{names[field]} ({locale}): unverändert")
+            else:
+                changed[field] = value
+                verb = "würde eingetragen" if dry_run else "eingetragen"
+                print(f"{names[field]} ({locale}, {len(value)} Zeichen, bisher {len(current)}) {verb}")
+                # Was sich ändert, steht im Protokoll – so fällt auf, wenn App Store Connect von Hand geändert wurde.
+                diff = list(difflib.unified_diff(current.splitlines(), value.splitlines(), "App Store Connect",
+                                                 "texte.md", lineterm="", n=0))
+                for line in diff[2:42]:
+                    print(f"    {line}")
+                if len(diff) > 42:
+                    print(f"    … {len(diff) - 42} weitere Zeilen")
+        if changed and not dry_run:
             connect.call("PATCH", f"/v1/appStoreVersionLocalizations/{item['id']}", {"data": {
-                "type": "appStoreVersionLocalizations", "id": item["id"], "attributes": {"whatsNew": text},
+                "type": "appStoreVersionLocalizations", "id": item["id"], "attributes": changed,
             }})
-            print(f"Neuerungen ({locale}, {len(text)} Zeichen) eingetragen")
-            return
+        return
+    if dry_run:
+        print(f"Würde die Sprache {locale} mit {', '.join(names[f] for f in texts)} anlegen")
+        return
     connect.call("POST", "/v1/appStoreVersionLocalizations", {"data": {
         "type": "appStoreVersionLocalizations",
-        "attributes": {"locale": locale, "whatsNew": text},
+        "attributes": {"locale": locale, **texts},
         "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}}},
     }})
-    print(f"Sprache {locale} mit Neuerungen ({len(text)} Zeichen) angelegt")
+    print(f"Sprache {locale} angelegt mit {', '.join(names[f] for f in texts)}")
 
 
 def main():
@@ -139,11 +192,16 @@ def main():
     parser.add_argument("--version", required=True, help="z. B. 1.1.1 (MARKETING_VERSION)")
     parser.add_argument("--build", required=True, help="Build-Nummer (CURRENT_PROJECT_VERSION)")
     parser.add_argument("--texts", default="docs/appstore/texte.md", help="Datei mit den Neuerungen")
+    parser.add_argument("--store-texts", action="store_true",
+                        help="auch Werbetext, Beschreibung und Schlüsselwörter aus --texts eintragen")
     parser.add_argument("--wait", type=int, default=20, help="Minuten warten, bis der Build verarbeitet ist")
     parser.add_argument("--dry-run", action="store_true", help="nur zeigen, was passieren würde")
     args = parser.parse_args()
 
     text = whats_new(args.texts, args.version)
+    texts = {"whatsNew": text}
+    if args.store_texts:
+        texts.update(store_texts(args.texts))
     missing = [name for name in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_P8") if not os.environ.get(name)]
     if missing:
         fail(f"Fehlende Secrets: {', '.join(missing)}")
@@ -160,12 +218,14 @@ def main():
     build_id = find_build(connect, app["id"], args.version, args.build, 0 if args.dry_run else args.wait)
     if args.dry_run:
         print(f"Würde Build {args.build} zuordnen und die Neuerungen eintragen:\n{text}")
+        if version_id:
+            set_texts(connect, version_id, locale, texts, dry_run=True)
         return
     connect.call("PATCH", f"/v1/appStoreVersions/{version_id}/relationships/build", {
         "data": {"type": "builds", "id": build_id},
     })
     print(f"Build {args.build} der Version {args.version} zugeordnet")
-    set_whats_new(connect, version_id, locale, text)
+    set_texts(connect, version_id, locale, texts)
     print(f"Fertig: {args.version} ({args.build}) wartet in App Store Connect aufs Einreichen")
 
 
